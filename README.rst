@@ -9,7 +9,7 @@ Wurm is a simple sqlite3-based ORM.
 Usage
 -----
 
-.. codeblock:: python
+.. code-block:: python
 
     # create a table:
 
