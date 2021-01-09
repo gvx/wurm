@@ -10,12 +10,12 @@ Usage
 -----
 
 .. codeblock:: python
-	# create a table:
+    # create a table:
 
-	@dataclass
-	class Point(wurm.Table):
-	    x: int
-    	y: int
+    @dataclass
+    class Point(wurm.Table):
+        x: int
+        y: int
 
     # types currently supported: int, str, bytes, bool, float
 
