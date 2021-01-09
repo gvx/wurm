@@ -10,6 +10,7 @@ Usage
 -----
 
 .. codeblock:: python
+
     # create a table:
 
     @dataclass
