@@ -25,6 +25,17 @@ class Datatypes(wurm.Table):
     dt: datetime
     path: Path
 
+@dataclass
+class UniqueInt(wurm.Table):
+    x: wurm.Unique[int]
+
+from wurm.typemaps import Annotated
+
+@dataclass
+class NonUniqueInt(wurm.Table):
+    x: Annotated[int, {'test': True}]
+
+
 @pytest.fixture
 def connection():
     wurm.setup_connection(sqlite3.connect(":memory:"))
@@ -157,3 +168,14 @@ def test_datatypes(connection):
         path=Path('/var/www/'))
     one.insert()
     assert Datatypes[one.rowid] == one
+
+def test_unique(connection):
+    UniqueInt(42).insert()
+    UniqueInt(7).insert()
+    with pytest.raises(wurm.WurmError):
+        UniqueInt(42).insert()
+    assert UniqueInt[1]
+
+def test_other_annotated(connection):
+    NonUniqueInt(42).insert()
+    NonUniqueInt(42).insert()

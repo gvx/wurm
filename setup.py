@@ -18,7 +18,9 @@ with open('wurm/__init__.py', 'r') as f:
 with open('README.rst', 'r', encoding='utf-8') as f:
     readme = f.read()
 
-REQUIRES = []
+REQUIRES = [
+    'typing_extensions; python_version < "3.9.0"'
+]
 
 kwargs = {
     'name': 'wurm',
