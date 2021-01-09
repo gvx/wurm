@@ -1,3 +1,5 @@
+from datetime import datetime, date, time
+from pathlib import Path
 from typing import NamedTuple
 
 class StoredValueTypeMap(NamedTuple):
@@ -32,3 +34,7 @@ register_type(bytes, '')
 register_type(int, 'INT')
 register_type(float, 'REAL')
 register_type(bool, 'INT', int, bool)
+register_type(date, 'TEXT', date.isoformat, date.fromisoformat)
+register_type(time, 'TEXT', time.isoformat, time.fromisoformat)
+register_type(datetime, 'TEXT', datetime.isoformat, datetime.fromisoformat)
+register_type(Path, 'TEXT', str, Path)

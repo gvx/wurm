@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from datetime import date, time, datetime
+from pathlib import Path
 import sqlite3
 
 import pytest
@@ -10,6 +12,18 @@ import wurm
 class Point(wurm.Table):
     x: int
     y: int
+
+@dataclass
+class Datatypes(wurm.Table):
+    string: str
+    blob: bytes
+    i: int
+    f: float
+    boolean: bool
+    d: date
+    t: time
+    dt: datetime
+    path: Path
 
 @pytest.fixture
 def connection():
@@ -130,3 +144,16 @@ def test_cannot_insert_same_rowid(connection):
     p2.rowid = 7
     with pytest.raises(wurm.WurmError):
         p2.insert()
+
+def test_datatypes(connection):
+    one = Datatypes(string='string',
+        blob=b'blob',
+        i=0xDEADBEEF,
+        f=42.1,
+        boolean=True,
+        d=date(2021, 1, 9),
+        t=time(7, 20, 0),
+        dt=datetime(2021, 1, 9, 7, 20, 0),
+        path=Path('/var/www/'))
+    one.insert()
+    assert Datatypes[one.rowid] == one
