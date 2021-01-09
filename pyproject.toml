@@ -2,13 +2,13 @@
 name = 'wurm'
 version = '0.0.1'
 description = ''
-author = 'Robin Wellner'
-author_email = 'rwellner0@gmail.com'
+author = 'Jasmijn Wellner'
+author_email = 'gyvox.public@gmail.com'
 license = 'MIT'
-url = 'https://github.com/_/wurm'
+url = 'https://github.com/gvx/wurm'
 
 [requires]
-python_version = ['3.5', '3.6', 'pypy3']
+python_version = ['3.7', '3.8', '3.9']
 
 [build-system]
 requires = ['setuptools', 'wheel']
