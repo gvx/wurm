@@ -1,0 +1,17 @@
+[metadata]
+name = 'wurm'
+version = '0.0.1'
+description = ''
+author = 'Robin Wellner'
+author_email = 'rwellner0@gmail.com'
+license = 'MIT'
+url = 'https://github.com/_/wurm'
+
+[requires]
+python_version = ['3.5', '3.6', 'pypy3']
+
+[build-system]
+requires = ['setuptools', 'wheel']
+
+[tool.hatch.commands]
+prerelease = 'hatch build'

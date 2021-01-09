@@ -1,0 +1,13 @@
+*.log
+*.pyc
+.cache/
+.coverage
+.idea/
+.vscode/
+.pytest_cache
+wurm.egg-info/
+build/
+dist/
+docs/build/
+venv/
+wheelhouse/
