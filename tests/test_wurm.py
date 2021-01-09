@@ -16,7 +16,7 @@ def connection():
     wurm.setup_connection(sqlite3.connect(":memory:"))
 
 def test_no_connection():
-    with pytest.raises(LookupError):
+    with pytest.raises(wurm.WurmError):
         list(Point)
 
 def test_model(connection):
@@ -121,3 +121,12 @@ def test_insert_None(connection):
     p = Point(1, None)
     p.insert()
     assert Point[p.rowid].y is None
+
+def test_cannot_insert_same_rowid(connection):
+    p = Point(0, 0)
+    p.rowid = 7
+    p.insert()
+    p2 = Point(0, 1)
+    p2.rowid = 7
+    with pytest.raises(wurm.WurmError):
+        p2.insert()

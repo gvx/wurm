@@ -1,9 +1,25 @@
 from contextvars import ContextVar
 from dataclasses import dataclass, field, astuple, fields
 from typing import ClassVar
+import sqlite3
 
 from . import sql
 from .typemaps import to_stored, from_stored
+
+class WurmError(Exception):
+    pass
+
+def execute(*args, conn=None):
+    if conn is None:
+        try:
+            conn = connection.get()
+        except LookupError:
+            raise WurmError('setup_connection() not called in current context!') from None
+    try:
+        with conn:
+            return conn.execute(*args)
+    except sqlite3.Error as e:
+        raise WurmError from e
 
 class TableMeta(type):
     def __new__(cls, clsname, bases, classdict, name=None):
@@ -12,17 +28,17 @@ class TableMeta(type):
         return t
     def __getitem__(self, pk):
         ensure_created(self)
-        return decode_row(self, connection.get().execute(sql.select_rowid(self), (pk,)).fetchone())
+        return decode_row(self, execute(sql.select_rowid(self), (pk,)).fetchone())
     def __delitem__(self, pk):
         ensure_created(self)
-        connection.get().execute(sql.delete(self), (pk,))
+        execute(sql.delete(self), (pk,))
     def __iter__(self):
         ensure_created(self)
-        for row in connection.get().execute(sql.select(self)):
+        for row in execute(sql.select(self)):
             yield decode_row(self, row)
     def __len__(self):
         ensure_created(self)
-        c, = connection.get().execute(sql.count(self)).fetchone()
+        c, = execute(sql.count(self)).fetchone()
         return c
     # def __reversed__(self):
     #     pass
@@ -49,35 +65,32 @@ def decode_row(table, row):
 @dataclass
 class Table(metaclass=TableMeta, name=NotImplemented):
     __table_name__: ClassVar[str]
-    __table_created__: ClassVar[bool] = False
     # technically rowid is Optional[int], but that's not implemented yet
     rowid: int = field(init=False, default=None, compare=False, repr=False)
     def insert(self):
         ensure_created(type(self))
-        cursor = connection.get().execute(sql.insert(type(self), includes_rowid=self.rowid is not None),
+        cursor = execute(sql.insert(type(self), includes_rowid=self.rowid is not None),
             encode_row(self))
         self.rowid = cursor.lastrowid
     def commit(self):
         ensure_created(type(self))
         assert self.rowid is not None
-        connection.get().execute(sql.update(type(self)), encode_row(self, exclude_rowid=True) + (self.rowid,))
+        execute(sql.update(type(self)), encode_row(self, exclude_rowid=True) + (self.rowid,))
     def delete(self):
         del type(self)[self.rowid]
         self.rowid = None
 
 connection = ContextVar('connection')
 
-def ensure_created(table):
-    if not table.__table_created__:
+def ensure_created(table, conn=None):
+    if conn is None:
         try:
             conn = connection.get()
         except LookupError:
             return
-        conn.execute(sql.create(table))
-        table.__table_created__ = True
+    execute(sql.create(table), conn=conn)
 
-def setup_connection(con):
-    connection.set(con)
+def setup_connection(conn):
+    connection.set(conn)
     for table in Table.__subclasses__():
-        con.execute(sql.create(table))
-        table.__table_created__ = True
+        ensure_created(table, conn=conn)
