@@ -11,12 +11,6 @@ class TableMeta(type):
         t = super().__new__(cls, clsname, bases, classdict)
         t.__table_name__ = clsname if name is None else name
         return t
-    def __getitem__(self, pk):
-        ensure_created(self)
-        return decode_row(self, execute(sql.select_rowid(self), (pk,)).fetchone())
-    def __delitem__(self, pk):
-        ensure_created(self)
-        execute(sql.delete(self), (pk,))
     def __iter__(self):
         return iter(self.query())
     def __len__(self):
@@ -48,7 +42,9 @@ class Table(metaclass=TableMeta, name=NotImplemented):
         assert self.rowid is not None
         execute(sql.update(type(self)), encode_row(self, exclude_rowid=True) + (self.rowid,))
     def delete(self):
-        del type(self)[self.rowid]
+        if self.rowid is None:
+            raise ValueError('Cannot delete instance not in database')
+        type(self).query(rowid=self.rowid).delete()
         self.rowid = None
 
 def setup_connection(conn):

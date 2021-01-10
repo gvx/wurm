@@ -85,19 +85,19 @@ def test_model_neq(connection):
 def test_model_get(connection):
     p1 = Point(10, 20)
     p1.insert()
-    assert Point[p1.rowid].rowid == p1.rowid
+    assert Point.query(rowid=p1.rowid).one().rowid == p1.rowid
 
 def test_model_get_doesnt_cache(connection):
     p1 = Point(10, 20)
     p1.insert()
-    assert Point[p1.rowid] is not p1
+    assert Point.query(rowid=p1.rowid).one() is not p1
 
 def test_model_update(connection):
     p1 = Point(10, 20)
     p1.insert()
     p1.y = 1000
     p1.commit()
-    assert Point[p1.rowid].y == 1000
+    assert Point.query(rowid=p1.rowid).one().y == 1000
 
 def test_model_delete1(connection):
     p1 = Point(10, 20)
@@ -112,7 +112,7 @@ def test_model_delete2(connection):
     p1.insert()
     p2 = Point(20, 10)
     p2.insert()
-    del Point[1]
+    Point.query(rowid=1).delete()
     assert len(Point) == 1
 
 def test_model_delete_no_rowid(connection):
@@ -145,7 +145,7 @@ def test_create_table_after_connection(connection):
 def test_insert_None(connection):
     p = Point(1, None)
     p.insert()
-    assert Point[p.rowid].y is None
+    assert Point.query(rowid=p.rowid).one().y is None
 
 def test_cannot_insert_same_rowid(connection):
     p = Point(0, 0)
@@ -167,14 +167,14 @@ def test_datatypes(connection):
         dt=datetime(2021, 1, 9, 7, 20, 0),
         path=Path('/var/www/'))
     one.insert()
-    assert Datatypes[one.rowid] == one
+    assert Datatypes.query(rowid=one.rowid).one() == one
 
 def test_unique(connection):
     UniqueInt(42).insert()
     UniqueInt(7).insert()
     with pytest.raises(wurm.WurmError):
         UniqueInt(42).insert()
-    assert UniqueInt[1]
+    assert UniqueInt.query(rowid=1).one()
 
 def test_other_annotated(connection):
     NonUniqueInt(42).insert()
@@ -245,3 +245,15 @@ def test_query_delete(connection):
     Point(1, 2).insert()
     Point.query(y=wurm.lt(2)).delete()
     assert len(Point) == 1
+
+def test_query_delete_all(connection):
+    Point(10, 20).insert()
+    Point(10, 0).insert()
+    Point(0, 20).insert()
+    Point(0, 0).insert()
+    Point.query().delete()
+    assert len(Point) == 0
+
+def test_query_delete_no_rowid(connection):
+    with pytest.raises(ValueError):
+        Point(0, 0).delete()

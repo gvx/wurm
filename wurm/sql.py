@@ -26,9 +26,6 @@ def select(table, where=None, limit=False):
         limit_clause = ''
     return f'select rowid, * from {table.__table_name__} {where_clause} {limit_clause}'
 
-def select_rowid(table):
-    return f'select rowid, * from {table.__table_name__} where rowid=?'
-
 def insert(table, *, includes_rowid=False):
     tfields = fields(table)
     if not includes_rowid:
@@ -39,6 +36,8 @@ def update(table):
     return f'update {table.__table_name__} set {", ".join(f"{field.name}=?" for field in fields(table)[1:]) } where rowid=?'
 
 def delete(table, where=None):
-    if not where:
-        where = 'rowid=?'
-    return f'delete from {table.__table_name__} where {where}'
+    if where:
+        where_clause = f'where {where}'
+    else:
+        where_clause = ''
+    return f'delete from {table.__table_name__} {where_clause}'
