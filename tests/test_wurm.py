@@ -179,3 +179,34 @@ def test_unique(connection):
 def test_other_annotated(connection):
     NonUniqueInt(42).insert()
     NonUniqueInt(42).insert()
+
+def test_query_len_1(connection):
+    assert len(Point.query()) == 0
+
+def test_query_len_2(connection):
+    Point(0, 0).insert()
+    Point(0, 0).insert()
+    assert len(Point.query()) == 2
+
+def test_query_len_3(connection):
+    Point(0, 0).insert()
+    Point(0, 1).insert()
+    assert len(Point.query(y=1)) == 1
+
+def test_query_len_4(connection):
+    Point(0, 0).insert()
+    Point(0, 1).insert()
+    Point(0, 2).insert()
+    assert len(Point.query(x=0, y=wurm.ge(1))) == 2
+
+def test_query_len_5(connection):
+    Point(0, 0).insert()
+    assert len(Point.query(y=wurm.gt(1), x=wurm.lt(1))) == 0
+
+def test_query_len_6(connection):
+    Point(0, 0).insert()
+    assert len(Point.query(y=wurm.le(1), x=wurm.ne(1))) == 1
+
+def test_query_len_7(connection):
+    with pytest.raises(wurm.WurmError):
+        Point.query(z=0)

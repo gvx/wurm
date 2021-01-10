@@ -1,25 +1,10 @@
-from contextvars import ContextVar
 from dataclasses import dataclass, field, astuple, fields
 from typing import ClassVar
-import sqlite3
 
-from . import sql
 from .typemaps import to_stored, from_stored
-
-class WurmError(Exception):
-    pass
-
-def execute(*args, conn=None):
-    if conn is None:
-        try:
-            conn = connection.get()
-        except LookupError:
-            raise WurmError('setup_connection() not called in current context!') from None
-    try:
-        with conn:
-            return conn.execute(*args)
-    except sqlite3.Error as e:
-        raise WurmError from e
+from .queries import Query
+from .connection import execute, ensure_created, connection
+from . import sql
 
 class TableMeta(type):
     def __new__(cls, clsname, bases, classdict, name=None):
@@ -40,8 +25,8 @@ class TableMeta(type):
         ensure_created(self)
         c, = execute(sql.count(self)).fetchone()
         return c
-    # def __reversed__(self):
-    #     pass
+    def query(self, **kwargs):
+        return Query(self, kwargs)
 
 def encode_row(item, *, exclude_rowid=False):
     row = tuple(
@@ -79,16 +64,6 @@ class Table(metaclass=TableMeta, name=NotImplemented):
     def delete(self):
         del type(self)[self.rowid]
         self.rowid = None
-
-connection = ContextVar('connection')
-
-def ensure_created(table, conn=None):
-    if conn is None:
-        try:
-            conn = connection.get()
-        except LookupError:
-            return
-    execute(sql.create(table), conn=conn)
 
 def setup_connection(conn):
     connection.set(conn)

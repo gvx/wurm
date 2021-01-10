@@ -8,8 +8,12 @@ def create(table):
 def make_field(f):
     return f'{f.name} {sql_type_for(f.type)}'
 
-def count(table):
-    return f'select count(*) from {table.__table_name__}'
+def count(table, where=None):
+    if where is None:
+        where_clause = ''
+    else:
+        where_clause = f'where {where}'
+    return f'select count(*) from {table.__table_name__} {where_clause}'
 
 def select(table):
     return f'select rowid, * from {table.__table_name__}'
