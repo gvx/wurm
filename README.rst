@@ -18,7 +18,8 @@ Usage
         x: int
         y: int
 
-    # types currently supported: int, str, bytes, bool, float
+    # types currently supported: int, str, bytes, bool, float, datetime.time,
+    #     datetime.date, datetime.datetime, pathlib.Path
 
     # sqlite3 connections cannot be shared, so call setup_connection once per thread
 
