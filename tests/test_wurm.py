@@ -210,3 +210,38 @@ def test_query_len_6(connection):
 def test_query_len_7(connection):
     with pytest.raises(wurm.WurmError):
         Point.query(z=0)
+
+def test_query_iter_1(connection):
+    p1 = Point(0, 0)
+    p1.insert()
+    p2 = Point(0, 1)
+    p2.insert()
+    Point(1, 0).insert()
+    assert list(Point.query(x=0)) == [p1, p2]
+
+def test_query_first_1(connection):
+    Point(0, 0).insert()
+    Point(0, 1).insert()
+    assert Point.query(x=0).first().x == 0
+
+def test_query_first_2(connection):
+    with pytest.raises(wurm.WurmError):
+        Point.query(x=0).first()
+
+def test_query_one_1(connection):
+    Point(0, 0).insert()
+    Point(0, 1).insert()
+    assert Point.query(y=0).one().x == 0
+
+def test_query_one_2(connection):
+    Point(0, 0).insert()
+    Point(0, 1).insert()
+    with pytest.raises(wurm.WurmError):
+        Point.query(x=0).one()
+
+def test_query_delete(connection):
+    Point(0, 0).insert()
+    Point(1, 1).insert()
+    Point(1, 2).insert()
+    Point.query(y=wurm.lt(2)).delete()
+    assert len(Point) == 1

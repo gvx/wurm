@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field, astuple, fields
 from typing import ClassVar
 
-from .typemaps import to_stored, from_stored
-from .queries import Query
+from .typemaps import to_stored
+from .queries import Query, decode_row
 from .connection import execute, ensure_created, connection
 from . import sql
 
@@ -18,13 +18,9 @@ class TableMeta(type):
         ensure_created(self)
         execute(sql.delete(self), (pk,))
     def __iter__(self):
-        ensure_created(self)
-        for row in execute(sql.select(self)):
-            yield decode_row(self, row)
+        return iter(self.query())
     def __len__(self):
-        ensure_created(self)
-        c, = execute(sql.count(self)).fetchone()
-        return c
+        return len(self.query())
     def query(self, **kwargs):
         return Query(self, kwargs)
 
@@ -36,16 +32,6 @@ def encode_row(item, *, exclude_rowid=False):
     if item.rowid is None or exclude_rowid:
         return row[1:]
     return row
-
-def decode_row(table, row):
-    rowid, *py_values = (
-        from_stored(field.type, stored_value)
-        for stored_value, field
-        in zip(row, fields(table))
-        )
-    item = table(*py_values)
-    item.rowid = rowid
-    return item
 
 @dataclass
 class Table(metaclass=TableMeta, name=NotImplemented):
