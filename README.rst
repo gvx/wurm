@@ -57,6 +57,17 @@ Python 3.7+.
 
     $ pip install wurm
 
+Changelog
+---------
+
+0.0.2
+=====
+
+* Ensure tables are created, even in edge cases.
+* Add support for ``date``, ``time``, ``datetime`` and ``Path``.
+* Add ``wurm.Unique[T]``.
+
+
 License
 -------
 
