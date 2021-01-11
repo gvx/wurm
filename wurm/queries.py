@@ -11,21 +11,69 @@ class Comparison:
     value: Any
 
 def gt(value):
+    """Helper function for selecting fields whose value is greater than
+    *value*
+
+    ``MyTable.query(myfield=gt(7))`` roughly translates to
+    ``SELECT * FROM MyTable WHERE myfield > 7``
+
+    :param Any value: value being compared to the field
+    :returns: object used in queries for comparison"""
     return Comparison('>', value)
 
 def lt(value):
+    """Helper function for selecting fields whose value is lesser than
+    *value*
+
+    ``MyTable.query(myfield=lt(7))`` roughly translates to
+    ``SELECT * FROM MyTable WHERE myfield < 7``
+
+    :param Any value: value being compared to the field
+    :returns: object used in queries for comparison"""
     return Comparison('<', value)
 
 def ge(value):
+    """Helper function for selecting fields whose value is greater than
+    or equal to *value*
+
+    ``MyTable.query(myfield=ge(7))`` roughly translates to
+    ``SELECT * FROM MyTable WHERE myfield >= 7``
+
+    :param Any value: value being compared to the field
+    :returns: object used in queries for comparison"""
     return Comparison('>=', value)
 
 def le(value):
+    """Helper function for selecting fields whose value is lesser than
+    or equal to *value*
+
+    ``MyTable.query(myfield=le(7))`` roughly translates to
+    ``SELECT * FROM MyTable WHERE myfield <= 7``
+
+    :param Any value: value being compared to the field
+    :returns: object used in queries for comparison"""
     return Comparison('<=', value)
 
 def eq(value):
+    """Helper function for selecting fields whose value is equal to
+    *value*
+
+    ``MyTable.query(myfield=7)`` roughly translates to
+    ``SELECT * FROM MyTable WHERE myfield = 7``
+
+    :param Any value: value being compared to the field
+    :returns: object used in queries for comparison"""
     return Comparison('=', value)
 
 def ne(value):
+    """Helper function for selecting fields whose value is not equal to
+    *value*
+
+    ``MyTable.query(myfield=ne(7))`` roughly translates to
+    ``SELECT * FROM MyTable WHERE myfield != 7``
+
+    :param Any value: value being compared to the field
+    :returns: object used in queries for comparison"""
     return Comparison('!=', value)
 
 def ensure_comparison(value):
@@ -51,15 +99,32 @@ def decode_row(table, row):
 
 class Query:
     def __init__(self, table, filters):
+        """Instantiate a Query object.
+
+        Query(table, filters) == table.query(**filters)"""
         self.table = table
         self.filters = {key: ensure_comparison(value) for key, value in filters.items()}
         self.comparisons = ' and '.join(f'{key}{value.op}?' for key, value in self.filters.items())
         self.values = tuple(encode_query_value(table, key, value.value) for key, value in self.filters.items())
     def __len__(self):
+        """Returns the number of rows matching this query.
+
+        .. note:: This method accesses the connected database.
+
+        :returns: number of matches
+        :rtype: int
+        """
         ensure_created(self.table)
         c, = execute(sql.count(self.table, self.comparisons), self.values).fetchone()
         return c
     def select_with_limit(self, limit=None):
+        """Create an iterator over the results of this query.
+
+        This accesses the database.
+
+        :param limit: The number of results to limit this query to.
+        :type limit: int or None
+        :returns: an iterator over the objects matching this query."""
         ensure_created(self.table)
         if limit is not None:
             values = self.values + (limit,)
@@ -68,6 +133,11 @@ class Query:
         for row in execute(sql.select(self.table, self.comparisons, limit is not None), values):
             yield decode_row(self.table, row)
     def __iter__(self):
+        """Iterate over the results of this query.
+
+        .. note:: This method accesses the connected database.
+
+        Equivalent to :meth:`select_with_limit` without specifying *limit*."""
         return self.select_with_limit()
     def _only_first(self, *, of):
         try:
@@ -76,8 +146,28 @@ class Query:
             raise WurmError(e.args[0].replace('values to unpack', 'rows returned')) from None
         return i
     def first(self):
+        """Return the first result of this query.
+
+        .. note:: This method accesses the connected database.
+
+        :raises WurmError: if this query returns zero results"""
         return self._only_first(of=1)
     def one(self):
+        """Return the only result of this query.
+
+        .. note:: This method accesses the connected database.
+
+        :raises WurmError: if this query returns zero results or more than one"""
         return self._only_first(of=2)
     def delete(self):
-        execute(sql.delete(self.table, self.comparisons), self.values)
+        """Delete the objects matching this query.
+
+        .. warning:: Calling this on an empty query deletes all rows
+           in the database
+
+        .. note:: This method accesses the connected database.
+
+        :returns: the number of rows deleted
+        :rtype: int
+        """
+        execute(sql.delete(self.table, self.comparisons), self.values).rowcount

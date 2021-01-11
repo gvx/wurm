@@ -19,12 +19,31 @@ class StoredValueTypeMap(NamedTuple):
 
 TYPE_MAPPING = {}
 
+SQL_EQUIVALENTS = {int: 'INT', str: 'TEXT', float: 'REAL', bytes: ''}
+
 def passthrough(x):
     return x
 
-def register_type(python_type, sql_type, encode=passthrough, decode=passthrough):
+def register_type(python_type, sql_type, *, encode, decode):
+    """Registers a type for use in model fields.
+
+    For example::
+
+        class Foo:
+            ...
+
+        register_type(Foo, str, encode=repr, decode=Foo.from_string)
+
+    :param type python_type: The type to register
+    :param type sql_type: The stored type, one of :class:`int`,
+        :class:`str`, :class:`float`, :class:`bytes`
+    :param encode: The function to prepare to store a value in the
+        database
+    :type encode: Callable[[python_type], sql_type]
+    :param decode: The function to interpret the stored value
+    :type decode: Callable[[sql_type], python_type]"""
     assert python_type not in TYPE_MAPPING
-    TYPE_MAPPING[python_type] = StoredValueTypeMap(sql_type, encode, decode)
+    TYPE_MAPPING[python_type] = StoredValueTypeMap(SQL_EQUIVALENTS[sql_type], encode, decode)
 
 def to_stored(python_type, value):
     if value is None:
@@ -48,12 +67,12 @@ def sql_type_for(python_type):
             postfix = ' UNIQUE'
     return TYPE_MAPPING[python_type].sql_type + postfix
 
-register_type(str, 'TEXT')
-register_type(bytes, '')
-register_type(int, 'INT')
-register_type(float, 'REAL')
-register_type(bool, 'INT', int, bool)
-register_type(date, 'TEXT', date.isoformat, date.fromisoformat)
-register_type(time, 'TEXT', time.isoformat, time.fromisoformat)
-register_type(datetime, 'TEXT', datetime.isoformat, datetime.fromisoformat)
-register_type(Path, 'TEXT', str, Path)
+register_type(str, str, encode=passthrough, decode=passthrough)
+register_type(bytes, bytes, encode=passthrough, decode=passthrough)
+register_type(int, int, encode=passthrough, decode=passthrough)
+register_type(float, float, encode=passthrough, decode=passthrough)
+register_type(bool, int, encode=int, decode=bool)
+register_type(date, str, encode=date.isoformat, decode=date.fromisoformat)
+register_type(time, str, encode=time.isoformat, decode=time.fromisoformat)
+register_type(datetime, str, encode=datetime.isoformat, decode=datetime.fromisoformat)
+register_type(Path, str, encode=str, decode=Path)
