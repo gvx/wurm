@@ -257,3 +257,6 @@ def test_query_delete_all(connection):
 def test_query_delete_no_rowid(connection):
     with pytest.raises(ValueError):
         Point(0, 0).delete()
+
+def test_table_truthy_without_connection():
+    assert Point

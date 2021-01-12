@@ -18,6 +18,8 @@ class TableMeta(type):
 
         """
         return iter(self.query())
+    def __bool__(self):
+        return True
     def __len__(self):
         """The total number of rows in this table.
 
@@ -32,10 +34,11 @@ class TableMeta(type):
         *rowid* or any of the fields defined on the table.
 
         The values can either be Python values matching the types of
-        the relevant fields, or the same wrapped in one of :py:`lt`,
-        :py:`gt`, :py:`le`, :py:`ge`, :py:`eq` or :py:`ne`.
+        the relevant fields, or the same wrapped in one of
+        :func:`~wurm.lt`, :func:`~wurm.gt`, :func:`~wurm.le`,
+        :func:`~wurm.ge`, :func:`~wurm.eq` or :func:`~wurm.ne`.
         When unwrapped, the behavior matches that of values wrapped in
-        :py:`eq`.
+        :func:`~wurm.eq`.
 
         Merely creating a query does not access the database.
 
@@ -56,7 +59,8 @@ def encode_row(item, *, exclude_rowid=False):
 class Table(metaclass=TableMeta, name=NotImplemented):
     """Baseclass for your own tables. Tables must be dataclasses.
 
-    Use the keyword argument *name* to set the table name::
+    Use the keyword argument *name* in the class definition to set the
+    table name::
 
         @dataclass
         class MyTable(Table, name='mytable'):
@@ -91,6 +95,9 @@ class Table(metaclass=TableMeta, name=NotImplemented):
 
         .. note:: This method accesses the connected database.
 
+        :raises ValueError: if called twice on the same instance, or
+            called on a fresh instance that has not been inserted yèt.
+
         """
         if self.rowid is None:
             raise ValueError('Cannot delete instance not in database')
@@ -98,8 +105,8 @@ class Table(metaclass=TableMeta, name=NotImplemented):
         self.rowid = None
 
 def setup_connection(conn):
-    """Call this once in each Thread with a sqlite3.Connection, before
-    accessing the database via wurm.
+    """Call this once in each OS thread with a
+    :class:`sqlite3.Connection`, before accessing the database via wurm.
 
     This records the connection and ensures all tables are created."""
     connection.set(conn)

@@ -5,14 +5,18 @@ from . import sql
 connection = ContextVar('connection')
 
 class WurmError(Exception):
-    pass
+    """General error for a database operation failing.
+
+    Its ``__cause__`` attribute refers to the relevant
+    :class:`sqlite3.Error` when that exists."""
 
 def execute(*args, conn=None):
     if conn is None:
         try:
             conn = connection.get()
         except LookupError:
-            raise WurmError('setup_connection() not called in current context!') from None
+            raise WurmError('setup_connection() not called in current'
+                ' context!') from None
     try:
         with conn:
             return conn.execute(*args)

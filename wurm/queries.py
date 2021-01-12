@@ -14,10 +14,10 @@ def gt(value):
     """Helper function for selecting fields whose value is greater than
     *value*
 
-    ``MyTable.query(myfield=gt(7))`` roughly translates to
-    ``SELECT * FROM MyTable WHERE myfield > 7``
+    :samp:`{table}.query({myfield}=gt(7))` roughly translates to
+    :samp:`SELECT * FROM {table} WHERE {myfield} > 7`
 
-    :param Any value: value being compared to the field
+    :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('>', value)
 
@@ -25,10 +25,10 @@ def lt(value):
     """Helper function for selecting fields whose value is lesser than
     *value*
 
-    ``MyTable.query(myfield=lt(7))`` roughly translates to
-    ``SELECT * FROM MyTable WHERE myfield < 7``
+    :samp:`{table}.query({myfield}=lt(7))` roughly translates to
+    :samp:`SELECT * FROM {table} WHERE {myfield} < 7`
 
-    :param Any value: value being compared to the field
+    :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('<', value)
 
@@ -36,10 +36,10 @@ def ge(value):
     """Helper function for selecting fields whose value is greater than
     or equal to *value*
 
-    ``MyTable.query(myfield=ge(7))`` roughly translates to
-    ``SELECT * FROM MyTable WHERE myfield >= 7``
+    :samp:`{table}.query({myfield}=ge(7))` roughly translates to
+    :samp:`SELECT * FROM {table} WHERE {myfield} >= 7`
 
-    :param Any value: value being compared to the field
+    :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('>=', value)
 
@@ -47,10 +47,10 @@ def le(value):
     """Helper function for selecting fields whose value is lesser than
     or equal to *value*
 
-    ``MyTable.query(myfield=le(7))`` roughly translates to
-    ``SELECT * FROM MyTable WHERE myfield <= 7``
+    :samp:`{table}.query({myfield}=le(7))` roughly translates to
+    :samp:`SELECT * FROM {table} WHERE {myfield} <= 7`
 
-    :param Any value: value being compared to the field
+    :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('<=', value)
 
@@ -58,10 +58,10 @@ def eq(value):
     """Helper function for selecting fields whose value is equal to
     *value*
 
-    ``MyTable.query(myfield=7)`` roughly translates to
-    ``SELECT * FROM MyTable WHERE myfield = 7``
+    :samp:`{table}.query({myfield}=7)` roughly translates to
+    :samp:`SELECT * FROM {table} WHERE {myfield} = 7`
 
-    :param Any value: value being compared to the field
+    :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('=', value)
 
@@ -69,10 +69,10 @@ def ne(value):
     """Helper function for selecting fields whose value is not equal to
     *value*
 
-    ``MyTable.query(myfield=ne(7))`` roughly translates to
-    ``SELECT * FROM MyTable WHERE myfield != 7``
+    :samp:`{table}.query({myfield}=ne(7))` roughly translates to
+    :samp:`SELECT * FROM {table} WHERE {myfield} != 7`
 
-    :param Any value: value being compared to the field
+    :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('!=', value)
 
@@ -98,10 +98,10 @@ def decode_row(table, row):
     return item
 
 class Query:
-    def __init__(self, table, filters):
-        """Instantiate a Query object.
+    """Represents one or more queries on a specified table.
 
-        Query(table, filters) == table.query(**filters)"""
+    :samp:`Query({table}, filters)` is equivalent to :samp:`{table}.query(**filters)``"""
+    def __init__(self, table: type, filters: dict):
         self.table = table
         self.filters = {key: ensure_comparison(value) for key, value in filters.items()}
         self.comparisons = ' and '.join(f'{key}{value.op}?' for key, value in self.filters.items())
