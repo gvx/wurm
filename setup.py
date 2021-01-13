@@ -46,11 +46,13 @@ kwargs = {
     'install_requires': REQUIRES,
     'tests_require': ['coverage', 'pytest'],
     'packages': find_packages(exclude=('tests', 'tests.*')),
-
 }
 
 #################### BEGIN USER OVERRIDES ####################
 # Add your customizations in this section.
+
+kwargs['project_urls'] = {'Documentation':
+    'https://wurm.readthedocs.io'}
 
 ###################### END USER OVERRIDES ####################
 
