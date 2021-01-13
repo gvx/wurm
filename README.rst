@@ -61,6 +61,13 @@ Python 3.7+.
 Changelog
 ---------
 
+0.1.0
+=====
+
+* Add ``wurm.Table.query()`` and ``wurm.Query``.
+* Remove ``wurm.Table[rowid]`` getter and deleter.
+* Add documentation for the public interface.
+
 0.0.2
 =====
 
