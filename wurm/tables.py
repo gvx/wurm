@@ -77,7 +77,6 @@ class Table(metaclass=TableMeta, name=NotImplemented):
         .. note:: This method accesses the connected database.
 
         """
-        ensure_created(type(self))
         cursor = execute(sql.insert(type(self), includes_rowid=self.rowid is not None),
             encode_row(self))
         self.rowid = cursor.lastrowid
@@ -87,7 +86,6 @@ class Table(metaclass=TableMeta, name=NotImplemented):
         .. note:: This method accesses the connected database.
 
         """
-        ensure_created(type(self))
         assert self.rowid is not None
         execute(sql.update(type(self)), encode_row(self, exclude_rowid=True) + (self.rowid,))
     def delete(self):

@@ -140,7 +140,8 @@ def test_create_table_after_connection(connection):
     @dataclass
     class Strings(wurm.Table):
         s: str
-    assert len(Strings) == 0
+    with pytest.raises(wurm.WurmError):
+        len(Strings)
 
 def test_insert_None(connection):
     p = Point(1, None)

@@ -2,7 +2,7 @@ from dataclasses import dataclass, fields
 from typing import Any
 
 from . import sql
-from .connection import execute, ensure_created, WurmError
+from .connection import execute, WurmError
 from .typemaps import from_stored, to_stored
 
 @dataclass(frozen=True)
@@ -114,7 +114,6 @@ class Query:
         :returns: number of matches
         :rtype: int
         """
-        ensure_created(self.table)
         c, = execute(sql.count(self.table, self.comparisons), self.values).fetchone()
         return c
     def select_with_limit(self, limit=None):
@@ -125,7 +124,6 @@ class Query:
         :param limit: The number of results to limit this query to.
         :type limit: int or None
         :returns: an iterator over the objects matching this query."""
-        ensure_created(self.table)
         if limit is not None:
             values = self.values + (limit,)
         else:
