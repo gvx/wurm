@@ -1,15 +1,19 @@
 from dataclasses import dataclass, field, astuple, fields
-from typing import ClassVar
+from typing import ClassVar, Tuple
 
 from .typemaps import to_stored
 from .queries import Query
-from .connection import execute, ensure_created, connection
+from .connection import execute, connection
 from . import sql
 
 class TableMeta(type):
-    def __new__(cls, clsname, bases, classdict, name=None):
+    def __new__(cls, clsname, bases, classdict, name=None, abstract=False):
         t = super().__new__(cls, clsname, bases, classdict)
-        t.__table_name__ = clsname if name is None else name
+        t.__abstract__ = abstract
+        if abstract:
+            t.__table_name__ = '<abstract table>'
+        else:
+            t.__table_name__ = name or clsname
         return t
     def __iter__(self):
         """Iterate over all the objects in the table.
@@ -56,7 +60,7 @@ def encode_row(item, *, exclude_rowid=False):
     return row
 
 @dataclass
-class Table(metaclass=TableMeta, name=NotImplemented):
+class Table(metaclass=TableMeta, abstract=True):
     """Baseclass for your own tables. Tables must be dataclasses.
 
     Use the keyword argument *name* in the class definition to set the
@@ -68,9 +72,15 @@ class Table(metaclass=TableMeta, name=NotImplemented):
 
     If not given, wurm uses the class name to automatically derive a
     suitable table name."""
+    __primary_key__: ClassVar[Tuple[str, ...]]
+    __abstract__: ClassVar[bool]
     __table_name__: ClassVar[str]
     # technically rowid is Optional[int], but that's not implemented yet
     rowid: int = field(init=False, default=None, compare=False, repr=False)
+    def __new__(cls, *args, **kwargs):
+        if cls.__abstract__:
+            raise TypeError('cannot instantiate abstract table')
+        return super().__new__(cls)
     def insert(self):
         """Insert a new object into the database.
 
@@ -109,4 +119,5 @@ def setup_connection(conn):
     This records the connection and ensures all tables are created."""
     connection.set(conn)
     for table in Table.__subclasses__():
-        ensure_created(table, conn=conn)
+        if not table.__abstract__:
+            execute(sql.create(table), conn=conn)

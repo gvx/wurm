@@ -29,6 +29,10 @@ class Datatypes(wurm.Table):
 class UniqueInt(wurm.Table):
     x: wurm.Unique[int]
 
+@dataclass
+class SomeAbstractTable(wurm.Table, abstract=True):
+    foo: str
+
 from wurm.typemaps import Annotated
 
 @dataclass
@@ -261,3 +265,7 @@ def test_query_delete_no_rowid(connection):
 
 def test_table_truthy_without_connection():
     assert Point
+
+def test_abstract_table(connection):
+    with pytest.raises(TypeError):
+        SomeAbstractTable(foo='hello')
