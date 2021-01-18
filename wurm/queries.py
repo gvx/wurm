@@ -88,13 +88,17 @@ def encode_query_value(table, fieldname, value):
     raise WurmError(f'invalid query: {table.__name__}.{fieldname} does not exist')
 
 def decode_row(table, row):
-    rowid, *py_values = (
-        from_stored(field.type, stored_value)
-        for stored_value, field
-        in zip(row, fields(table))
-        )
-    item = table(*py_values)
-    item.rowid = rowid
+    values = {name: from_stored(ty, stored_value)
+        for stored_value, (name, ty)
+        in zip(row, table.__fields_info__.items())
+    }
+    if 'rowid' in values:
+        rowid = values.pop('rowid')
+    else:
+        rowid = ...
+    item = table(**values)
+    if rowid is not ...:
+        item.rowid = rowid
     return item
 
 class Query:

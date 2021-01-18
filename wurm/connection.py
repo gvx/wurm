@@ -10,6 +10,8 @@ class WurmError(Exception):
     :class:`sqlite3.Error` when that exists."""
 
 def execute(*args, conn=None):
+    with open('.sql.log', 'a') as f:
+        print(*args, file=f)
     if conn is None:
         try:
             conn = connection.get()

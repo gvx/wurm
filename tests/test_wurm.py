@@ -39,6 +39,11 @@ from wurm.typemaps import Annotated
 class NonUniqueInt(wurm.Table):
     x: Annotated[int, {'test': True}]
 
+@dataclass
+class NoRowid(wurm.WithoutRowid):
+    key: wurm.Primary[str]
+    count: int
+
 
 @pytest.fixture
 def connection():
@@ -269,3 +274,12 @@ def test_table_truthy_without_connection():
 def test_abstract_table(connection):
     with pytest.raises(TypeError):
         SomeAbstractTable(foo='hello')
+
+def test_norowid(connection):
+    NoRowid('one', 1).insert()
+    NoRowid('two', 2).insert()
+    NoRowid('three', 3).insert()
+    two = NoRowid.query(key='two').one()
+    two.count = 42
+    two.commit()
+    assert len(NoRowid) == 3

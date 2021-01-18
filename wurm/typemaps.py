@@ -9,8 +9,16 @@ except ImportError:  # noqa
 
 T = TypeVar('T')
 _UniqueMarker = {'wurm-unique': True}
+_PrimaryMarker = {'wurm-primary': True}
 
 Unique = Annotated[T, _UniqueMarker]
+Primary = Annotated[T, _PrimaryMarker]
+
+def is_primary(ty: type) -> bool:
+    if get_origin(ty) is Annotated:
+        _, *args = get_args(ty)
+        return any(_PrimaryMarker is arg for arg in args)
+    return False
 
 class StoredValueTypeMap(NamedTuple):
     sql_type: str
@@ -19,7 +27,7 @@ class StoredValueTypeMap(NamedTuple):
 
 TYPE_MAPPING = {}
 
-SQL_EQUIVALENTS = {int: 'INT', str: 'TEXT', float: 'REAL', bytes: ''}
+SQL_EQUIVALENTS = {int: 'INTEGER', str: 'TEXT', float: 'REAL', bytes: ''}
 
 def passthrough(x):
     return x
@@ -63,7 +71,9 @@ def sql_type_for(python_type):
     postfix = ''
     if get_origin(python_type) is Annotated:
         python_type, *rest = get_args(python_type)
-        if any(_UniqueMarker is arg for arg in rest):
+        if any(_PrimaryMarker is arg for arg in rest):
+            postfix = ' PRIMARY KEY'
+        elif any(_UniqueMarker is arg for arg in rest):
             postfix = ' UNIQUE'
     return TYPE_MAPPING[python_type].sql_type + postfix
 

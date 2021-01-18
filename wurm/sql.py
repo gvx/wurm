@@ -3,7 +3,7 @@ from dataclasses import fields
 from .typemaps import sql_type_for
 
 def create(table):
-    return f'create table if not exists {table.__table_name__}({", ".join(make_field(f) for f in fields(table)[1:])})'
+    return f'create table if not exists {table.__table_name__}({", ".join(make_field(f) for f in fields(table))})'
 
 def make_field(f):
     return f'{f.name} {sql_type_for(f.type)}'
@@ -24,16 +24,13 @@ def select(table, where=None, limit=False):
         limit_clause = 'limit ?'
     else:
         limit_clause = ''
-    return f'select rowid, * from {table.__table_name__} {where_clause} {limit_clause}'
+    return f'select * from {table.__table_name__} {where_clause} {limit_clause}'
 
-def insert(table, *, includes_rowid=False):
-    tfields = fields(table)
-    if not includes_rowid:
-        tfields = tfields[1:]
-    return f'insert into {table.__table_name__} ({", ".join(f.name for f in tfields)}) values({", ".join("?" * len(tfields))})'
+def insert(table):
+    return f'insert into {table.__table_name__} ({", ".join(name for name in table.__fields_info__)}) values({", ".join(":" + name for name in table.__fields_info__)})'
 
 def update(table):
-    return f'update {table.__table_name__} set {", ".join(f"{field.name}=?" for field in fields(table)[1:]) } where rowid=?'
+    return f'update {table.__table_name__} set {", ".join(f"{name}=:{name}" for name in table.__datafields__) } where {", ".join(f"{name}=:{name}" for name in table.__primary_key__) }'
 
 def delete(table, where=None):
     if where:
