@@ -1,12 +1,10 @@
-from dataclasses import fields
-
 from .typemaps import sql_type_for
 
 def create(table):
-    return f'create table if not exists {table.__table_name__}({", ".join(make_field(f) for f in fields(table))})'
+    return f'create table if not exists {table.__table_name__}({", ".join(make_field(name, ty) for name, ty in table.__fields_info__.items())}, PRIMARY KEY ({", ".join(table.__primary_key__)}))'
 
-def make_field(f):
-    return f'{f.name} {sql_type_for(f.type)}'
+def make_field(name, ty):
+    return f'{name} {sql_type_for(ty)}'
 
 def count(table, where=None):
     if not where:

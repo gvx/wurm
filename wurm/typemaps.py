@@ -76,9 +76,7 @@ def sql_type_for(python_type):
     postfix = ''
     if get_origin(python_type) is Annotated:
         python_type, *rest = get_args(python_type)
-        if any(_PrimaryMarker is arg for arg in rest):
-            postfix = ' PRIMARY KEY'
-        elif any(_UniqueMarker is arg for arg in rest):
+        if any(_UniqueMarker is arg for arg in rest):
             postfix = ' UNIQUE'
     return TYPE_MAPPING[python_type].sql_type + postfix
 

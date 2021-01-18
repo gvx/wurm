@@ -44,6 +44,10 @@ class NoRowid(wurm.WithoutRowid):
     key: wurm.Primary[str]
     count: int
 
+@dataclass
+class CompositeKey(wurm.WithoutRowid):
+    part_one: wurm.Primary[int]
+    part_two: wurm.Primary[int]
 
 @pytest.fixture
 def connection():
@@ -289,3 +293,10 @@ def test_no_subclass_nonabstract_table():
         @dataclass
         class Point3D(Point):
             z: int
+
+def test_composite_key(connection):
+    CompositeKey(1, 2).insert()
+    CompositeKey(2, 1).insert()
+    CompositeKey(1, 1).insert()
+    with pytest.raises(wurm.WurmError):
+        CompositeKey(1, 2).insert()
