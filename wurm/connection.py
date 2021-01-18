@@ -10,8 +10,6 @@ class WurmError(Exception):
     :class:`sqlite3.Error` when that exists."""
 
 def execute(*args, conn=None):
-    with open('.sql.log', 'a') as f:
-        print(*args, file=f)
     if conn is None:
         try:
             conn = connection.get()
@@ -23,3 +21,12 @@ def execute(*args, conn=None):
             return conn.execute(*args)
     except sqlite3.Error as e:
         raise WurmError from e
+
+def setup_connection(conn):
+    """Call this once in each OS thread with a
+    :class:`sqlite3.Connection`, before accessing the database via wurm.
+
+    This records the connection and ensures all tables are created."""
+    connection.set(conn)
+    from .tables import BaseTable, create_tables
+    create_tables(BaseTable, conn)

@@ -4,7 +4,7 @@ from types import MappingProxyType
 
 from .typemaps import to_stored, Primary, is_primary
 from .queries import Query
-from .connection import execute, connection
+from .connection import execute
 from . import sql
 
 def table_fields(table):
@@ -166,11 +166,3 @@ def create_tables(tbl, conn):
         if not table.__abstract__:
             execute(sql.create(table), conn=conn)
         create_tables(table, conn)
-
-def setup_connection(conn):
-    """Call this once in each OS thread with a
-    :class:`sqlite3.Connection`, before accessing the database via wurm.
-
-    This records the connection and ensures all tables are created."""
-    connection.set(conn)
-    create_tables(BaseTable, conn)
