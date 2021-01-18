@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field, astuple, fields
+from dataclasses import dataclass, field
 from typing import ClassVar, Tuple, Dict, get_type_hints
+from types import MappingProxyType
 
 from .typemaps import to_stored, Primary, is_primary
 from .queries import Query
@@ -7,8 +8,9 @@ from .connection import execute, connection
 from . import sql
 
 def table_fields(table):
-    return {key: value for key, value in get_type_hints(table, include_extras=True).items()
-        if not key.startswith('_')}
+    return MappingProxyType({key: value for key, value
+        in get_type_hints(table, include_extras=True).items()
+        if not key.startswith('_')})
 
 def primary_key_fields(fields):
     return tuple(key for key, value in fields.items()
