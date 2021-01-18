@@ -22,6 +22,8 @@ def data_fields(fields):
 
 class TableMeta(type):
     def __new__(cls, clsname, bases, classdict, name=None, abstract=False):
+        if not all(getattr(base, '__abstract__', True) for base in bases):
+            raise TypeError('cannot subclass non-abstract Table')
         t = super().__new__(cls, clsname, bases, classdict)
         t.__abstract__ = abstract
         if abstract:

@@ -283,3 +283,9 @@ def test_norowid(connection):
     two.count = 42
     two.commit()
     assert len(NoRowid) == 3
+
+def test_no_subclass_nonabstract_table():
+    with pytest.raises(TypeError):
+        @dataclass
+        class Point3D(Point):
+            z: int
