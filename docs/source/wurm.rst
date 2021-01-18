@@ -12,7 +12,7 @@ Connecting to a database
 Defining tables
 ---------------
 
-.. autoclass:: wurm.Table
+.. autoclass:: wurm.tables.BaseTable
     :members:
 
     .. method:: query(**kwargs)
@@ -49,6 +49,44 @@ Defining tables
 
        .. note:: This method accesses the connected database.
 
+.. class:: wurm.Table
+
+    Baseclass for regular rowid tables. See
+    :class:`~wurm.tables.BaseTable` for methods available on
+    subclasses.
+
+.. class:: wurm.WithoutRowid
+
+    Baseclass for ``WITHOUT ROWID`` tables. You need to add an explicit
+    primary key using :data:`~wurm.Primary` for these kinds of tables.
+    See :class:`~wurm.tables.BaseTable` for methods available on
+    subclasses.
+
+Annotations
+***********
+
+Tables are defined using :pep:`526` type annotations, where the
+type for each column has to be one of the following:
+
+* One of the basic supported types (currently :class:`str`,
+  :class:`bytes`, :class:`int`, :class:`float`, :class:`bool`,
+  :class:`datetime.date`, :class:`datetime.time`,
+  :class:`datetime.datetime` and :class:`pathlib.Path`).
+* A type registered with :func:`wurm.register_type`.
+* :samp:`wurm.Primary[{T}]` or :samp:`wurm.Unique[{T}]`, where
+  :samp:`{T}` is one of the types mentioned above.
+
+
+.. data:: wurm.Primary
+
+   Using :samp:`Primary[{T}]` as a type annotation in a table definition
+   is equivalent to using :samp:`{T}`, except that the column will be
+   the primary key.
+
+   If you attempt change the database in a way that would cause two
+   rows to share a primary key, the operation is rolled back, and a
+   :class:`~wurm.WurmError` is raised.
+
 .. data:: wurm.Unique
 
    Using :samp:`Unique[{T}]` as a type annotation in a table definition
@@ -56,9 +94,12 @@ Defining tables
    is created for the field. Note that SQL considers ``None`` values to
    be different from other ``None`` values for this purpose.
 
-   If you attempt to call :meth:`Table.insert` or :meth:`Table.commit`
-   in a way that would violate such a constraint, the operation is
-   rolled back, and a :class:`WurmError` is raised.
+   If you attempt to call :meth:`~wurm.tables.BaseTable.insert` or
+   :meth:`~wurm.tables.BaseTable.commit` in a way that would violate
+   such a constraint, the operation is rolled back, and a
+   :class:`~wurm.WurmError` is raised.
+
+.. autofunction:: wurm.register_type
 
 -------------
 Queries

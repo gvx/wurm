@@ -165,7 +165,7 @@ class Query:
         """Delete the objects matching this query.
 
         .. warning:: Calling this on an empty query deletes all rows
-           in the database
+           of the relevant table in the database
 
         .. note:: This method accesses the connected database.
 

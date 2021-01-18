@@ -70,8 +70,11 @@ class TableMeta(type):
         return Query(self, kwargs)
 
 @dataclass
-class WithoutRowid(metaclass=TableMeta, abstract=True):
+class BaseTable(metaclass=TableMeta, abstract=True):
     """Baseclass for your own tables. Tables must be dataclasses.
+
+    Do not use directly, subclass :class:`wurm.Table` or
+    :class:`wurm.WithoutRowid` instead.
 
     Use the keyword argument *name* in the class definition to set the
     table name::
@@ -81,7 +84,22 @@ class WithoutRowid(metaclass=TableMeta, abstract=True):
             ...
 
     If not given, wurm uses the class name to automatically derive a
-    suitable table name."""
+    suitable table name.
+
+    Use the keyword argument *abstract* in the class definition to
+    add fields or methods that you want to share between several
+    tables::
+
+        @dataclass
+        class HasOwner(Table, abstract=True):
+            owner: str
+            def display_owner(self):
+                return self.owner.capitalize()
+
+    The above will not create a new table, but subclasses of
+    ``HasOwner`` will have a column called ``owner`` and a method
+    called ``display_owner``.
+    """
     __fields_info__: ClassVar[Dict[str, type]]
     __datafields__: ClassVar[Tuple[str, ...]]
     __primary_key__: ClassVar[Tuple[str, ...]]
@@ -112,7 +130,7 @@ class WithoutRowid(metaclass=TableMeta, abstract=True):
         .. note:: This method accesses the connected database.
 
         :raises ValueError: if called twice on the same instance, or
-            called on a fresh instance that has not been inserted yèt.
+            called on a fresh instance that has not been inserted yet.
 
         """
         Query(type(self), self._primary_key()).delete()
@@ -122,7 +140,11 @@ class WithoutRowid(metaclass=TableMeta, abstract=True):
         return {key: to_stored(ty, getattr(self, key)) for key, ty in self.__fields_info__.items()}
 
 @dataclass
-class Table(WithoutRowid, abstract=True):
+class WithoutRowid(BaseTable, abstract=True):
+    pass
+
+@dataclass
+class Table(BaseTable, abstract=True):
     # technically rowid is Optional[int], but that's not implemented yet
     rowid: Primary[int] = field(init=False, default=None, compare=False, repr=False)
     def delete(self):
@@ -131,7 +153,7 @@ class Table(WithoutRowid, abstract=True):
         .. note:: This method accesses the connected database.
 
         :raises ValueError: if called twice on the same instance, or
-            called on a fresh instance that has not been inserted yèt.
+            called on a fresh instance that has not been inserted yet.
 
         """
         if self.rowid is None:
@@ -151,4 +173,4 @@ def setup_connection(conn):
 
     This records the connection and ensures all tables are created."""
     connection.set(conn)
-    create_tables(WithoutRowid, conn)
+    create_tables(BaseTable, conn)

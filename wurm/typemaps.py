@@ -38,6 +38,11 @@ def register_type(python_type, sql_type, *, encode, decode):
     For example::
 
         class Foo:
+            def __repr__(self):
+                ...
+            @classmethod
+            def from_string(cls, string):
+                ...
             ...
 
         register_type(Foo, str, encode=repr, decode=Foo.from_string)
@@ -47,9 +52,9 @@ def register_type(python_type, sql_type, *, encode, decode):
         :class:`str`, :class:`float`, :class:`bytes`
     :param encode: The function to prepare to store a value in the
         database
-    :type encode: Callable[[python_type], sql_type]
+    :type encode: python_type -> sql_type
     :param decode: The function to interpret the stored value
-    :type decode: Callable[[sql_type], python_type]"""
+    :type decode: sql_type -> python_type"""
     assert python_type not in TYPE_MAPPING
     TYPE_MAPPING[python_type] = StoredValueTypeMap(SQL_EQUIVALENTS[sql_type], encode, decode)
 
