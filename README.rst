@@ -39,8 +39,8 @@ Usage
 
     # simple queries:
 
-    point = Point[1] # get by rowid
-    del Point[1] # delete by rowid
+    point = Point.query(rowid=1).one() # get by rowid
+    Point.query(rowid=1).delete() # delete by rowid
     point.delete() # delete from an object
     all_points = list(Point) # iterate over a table to get instances for all rows
     number_of_points = len(Point) # get the total number of rows in the table
