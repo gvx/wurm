@@ -172,4 +172,4 @@ class Query:
         :returns: the number of rows deleted
         :rtype: int
         """
-        execute(sql.delete(self.table, self.comparisons), self.values).rowcount
+        return execute(sql.delete(self.table, self.comparisons), self.values).rowcount
