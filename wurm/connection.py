@@ -28,5 +28,6 @@ def setup_connection(conn):
 
     This records the connection and ensures all tables are created."""
     connection.set(conn)
+    execute('PRAGMA foreign_keys = ON', conn=conn)
     from .tables import BaseTable, create_tables
     create_tables(BaseTable, conn)

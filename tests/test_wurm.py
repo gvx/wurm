@@ -49,6 +49,15 @@ class CompositeKey(wurm.WithoutRowid):
     part_one: wurm.Primary[int]
     part_two: wurm.Primary[int]
 
+@dataclass
+class ForeignKeyTest(wurm.Table):
+    point: Point
+    word: NoRowid
+
+@dataclass
+class OneToOneForeignKeyTest(wurm.Table):
+    point: wurm.Unique[Point]
+
 @pytest.fixture
 def connection():
     wurm.setup_connection(sqlite3.connect(":memory:"))
@@ -300,3 +309,32 @@ def test_composite_key(connection):
     CompositeKey(1, 1).insert()
     with pytest.raises(wurm.WurmError):
         CompositeKey(1, 2).insert()
+
+def test_foreign_keys_1(connection):
+    p = Point(1,2)
+    p.insert()
+    n = NoRowid('ok', 1)
+    n.insert()
+    fk = ForeignKeyTest(p, n)
+    fk.insert()
+    assert isinstance(ForeignKeyTest.query(rowid=1).one().point, Point)
+
+def test_foreign_keys_2():
+    @dataclass
+    class ForeignKeyTest2(wurm.Table):
+        point: CompositeKey
+    with pytest.raises(NotImplementedError):
+        wurm.setup_connection(sqlite3.connect(":memory:"))
+    # prevent the table from being created again
+    ForeignKeyTest2.__abstract__ = True
+
+def test_foreign_keys_3(connection):
+    p = Point(1, 1)
+    p.insert()
+    OneToOneForeignKeyTest(p).insert()
+    p2 = Point(1, 1)
+    p2.insert()
+    OneToOneForeignKeyTest(p2).insert()
+    dup = OneToOneForeignKeyTest(p)
+    with pytest.raises(wurm.WurmError):
+        dup.insert()
