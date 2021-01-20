@@ -89,7 +89,9 @@ type for each column has to be one of the following:
 
    Using :samp:`Primary[{T}]` as a type annotation in a table definition
    is equivalent to using :samp:`{T}`, except that the column will be
-   the primary key.
+   part of the primary key. If multiple fields on a single table
+   definition are annotated in this way, their columns form a composite
+   primary key together.
 
    If you attempt change the database in a way that would cause two
    rows to share a primary key, the operation is rolled back, and a
