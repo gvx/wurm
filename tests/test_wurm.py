@@ -58,6 +58,10 @@ class ForeignKeyTest(wurm.Table):
 class OneToOneForeignKeyTest(wurm.Table):
     point: wurm.Unique[Point]
 
+@dataclass
+class PrimaryForeignKeyTest(wurm.WithoutRowid):
+    point: wurm.Primary[Point]
+
 @pytest.fixture
 def connection():
     wurm.setup_connection(sqlite3.connect(":memory:"))
@@ -336,5 +340,16 @@ def test_foreign_keys_3(connection):
     p2.insert()
     OneToOneForeignKeyTest(p2).insert()
     dup = OneToOneForeignKeyTest(p)
+    with pytest.raises(wurm.WurmError):
+        dup.insert()
+
+def test_foreign_keys_4(connection):
+    p = Point(1, 1)
+    p.insert()
+    PrimaryForeignKeyTest(p).insert()
+    p2 = Point(1, 1)
+    p2.insert()
+    PrimaryForeignKeyTest(p2).insert()
+    dup = PrimaryForeignKeyTest(p)
     with pytest.raises(wurm.WurmError):
         dup.insert()
