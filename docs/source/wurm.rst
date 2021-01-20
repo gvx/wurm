@@ -73,6 +73,14 @@ type for each column has to be one of the following:
   :class:`datetime.date`, :class:`datetime.time`,
   :class:`datetime.datetime` and :class:`pathlib.Path`).
 * A type registered with :func:`wurm.register_type`.
+* A previously defined :class:`wurm.Table` or
+  :class:`wurm.WithoutRowid` subclass.
+
+  .. note:: Only tables with a non-composite primary key may currently
+            be referenced this way. This means that zero fields can be
+            marked with :data:`wurm.Primary` for rowid tables, and
+            exactly one field has to be marked with :data:`wurm.Primary`
+            for WITHOUT ROWID tables.
 * :samp:`wurm.Primary[{T}]` or :samp:`wurm.Unique[{T}]`, where
   :samp:`{T}` is one of the types mentioned above.
 
