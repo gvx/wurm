@@ -84,7 +84,7 @@ def ensure_comparison(value):
 def encode_query_value(table, fieldname, value):
     for field in fields(table):
         if field.name == fieldname:
-            return to_stored(field.type, value)
+            return to_stored(fieldname, field.type, value)
     raise WurmError(f'invalid query: {table.__name__}.{fieldname} does not exist')
 
 def decode_row(table, row):
@@ -107,9 +107,14 @@ class Query:
     :samp:`Query({table}, filters)` is equivalent to :samp:`{table}.query(**filters)``"""
     def __init__(self, table: type, filters: dict):
         self.table = table
-        self.filters = {key: ensure_comparison(value) for key, value in filters.items()}
-        self.comparisons = ' and '.join(f'{key}{value.op}?' for key, value in self.filters.items())
-        self.values = tuple(encode_query_value(table, key, value.value) for key, value in self.filters.items())
+        self.filters = {key: ensure_comparison(value) for key, value
+            in filters.items()}
+        self.comparisons = ' and '.join(f'{key}{value.op}:{key}'
+            for key, value in self.filters.items())
+        self.values = {column: cooked
+            for key, value in self.filters.items()
+            for column, cooked
+            in encode_query_value(table, key, value.value).items()}
     def __len__(self):
         """Returns the number of rows matching this query.
 
@@ -129,7 +134,7 @@ class Query:
         :type limit: int or None
         :returns: an iterator over the objects matching this query."""
         if limit is not None:
-            values = self.values + (limit,)
+            values = {'_limit_': limit, **self.values}
         else:
             values = self.values
         for row in execute(sql.select(self.table, self.comparisons, limit is not None), values):

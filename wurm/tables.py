@@ -2,15 +2,16 @@ from dataclasses import dataclass, field
 from typing import ClassVar, Tuple, Dict, get_type_hints
 from types import MappingProxyType
 
-from .typemaps import to_stored, Primary, is_primary
+from .typemaps import (to_stored, Primary, is_primary, unwrap_type,
+    is_unique)
 from .queries import Query
 from .connection import execute
 from . import sql
 
 def table_fields(table):
-    return MappingProxyType({key: value for key, value
+    return {key: value for key, value
         in get_type_hints(table, include_extras=True).items()
-        if not key.startswith('_')})
+        if not key.startswith('_')}
 
 def primary_key_fields(fields):
     return tuple(key for key, value in fields.items()
@@ -19,6 +20,10 @@ def primary_key_fields(fields):
 def data_fields(fields):
     return tuple(key for key, value in fields.items()
         if not is_primary(value))
+
+def indexes(fields):
+    return tuple((key, True) for key, value in fields.items()
+        if is_unique(value))
 
 class TableMeta(type):
     def __new__(cls, clsname, bases, classdict, name=None, abstract=False):
@@ -30,9 +35,11 @@ class TableMeta(type):
             t.__table_name__ = '<abstract table>'
         else:
             t.__table_name__ = name or clsname
-            t.__fields_info__ = table_fields(t)
-            t.__primary_key__ = primary_key_fields(t.__fields_info__)
-            t.__datafields__ = data_fields(t.__fields_info__)
+            fields = table_fields(t)
+            t.__fields_info__ = MappingProxyType({key: unwrap_type(ty) for key, ty in fields.items()})
+            t.__primary_key__ = primary_key_fields(fields)
+            t.__data_fields__ = data_fields(fields)
+            t.__indexes__ = indexes(fields)
         return t
     def __iter__(self):
         """Iterate over all the objects in the table.
@@ -97,12 +104,13 @@ class BaseTable(metaclass=TableMeta, abstract=True):
                 return self.owner.capitalize()
 
     The above will not create a new table, but subclasses of
-    ``HasOwner`` will have a column called ``owner`` and a method
+    ``HasOwner`` will have a field called ``owner`` and a method
     called ``display_owner``.
     """
     __fields_info__: ClassVar[Dict[str, type]]
-    __datafields__: ClassVar[Tuple[str, ...]]
+    __data_fields__: ClassVar[Tuple[str, ...]]
     __primary_key__: ClassVar[Tuple[str, ...]]
+    __indexes__: ClassVar[Tuple[Tuple[str, bool], ...]]
     __abstract__: ClassVar[bool]
     __table_name__: ClassVar[str]
     def __new__(cls, *args, **kwargs):
@@ -137,7 +145,10 @@ class BaseTable(metaclass=TableMeta, abstract=True):
     def _primary_key(self):
         return {key: getattr(self, key) for key in self.__primary_key__}
     def _encode_row(self):
-        return {key: to_stored(ty, getattr(self, key)) for key, ty in self.__fields_info__.items()}
+        return {column: cooked
+            for key, ty in self.__fields_info__.items()
+            for column, cooked
+            in to_stored(key, ty, getattr(self, key)).items()}
 
 @dataclass
 class WithoutRowid(BaseTable, abstract=True):
@@ -165,4 +176,6 @@ def create_tables(tbl, conn):
     for table in tbl.__subclasses__():
         if not table.__abstract__:
             execute(sql.create(table), conn=conn)
+            for create_index_query in sql.create_indexes(table):
+                execute(create_index_query, conn=conn)
         create_tables(table, conn)
