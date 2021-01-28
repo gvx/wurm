@@ -62,6 +62,23 @@ class OneToOneForeignKeyTest(wurm.Table):
 class PrimaryForeignKeyTest(wurm.WithoutRowid):
     point: wurm.Primary[Point]
 
+@wurm.register_dataclass
+@dataclass
+class Color:
+    r: float
+    g: float
+    b: float
+    a: float
+
+@dataclass
+class MultiColumnFields(wurm.Table):
+    color: Color
+
+@dataclass
+class ForeignKeyTest2(wurm.Table):
+    point: CompositeKey
+
+
 @pytest.fixture
 def connection():
     wurm.setup_connection(sqlite3.connect(":memory:"))
@@ -324,13 +341,10 @@ def test_foreign_keys_1(connection):
     assert isinstance(ForeignKeyTest.query(rowid=1).one().point, Point)
 
 def test_foreign_keys_2():
-    @dataclass
-    class ForeignKeyTest2(wurm.Table):
-        point: CompositeKey
-    with pytest.raises(NotImplementedError):
-        wurm.setup_connection(sqlite3.connect(":memory:"))
-    # prevent the table from being created again
-    ForeignKeyTest2.__abstract__ = True
+    c = CompositeKey(1, 2)
+    c.insert()
+    ForeignKeyTest2(c).insert()
+    assert ForeignKeyTest2.query().one().point.part_one == 1
 
 def test_foreign_keys_3(connection):
     p = Point(1, 1)
@@ -353,3 +367,8 @@ def test_foreign_keys_4(connection):
     dup = PrimaryForeignKeyTest(p)
     with pytest.raises(wurm.WurmError):
         dup.insert()
+
+def test_multicolumnfields(connection):
+    MultiColumnFields(Color(0., 2., 8., 1.)).insert()
+    o, = MultiColumnFields
+    assert o.color == Color(0., 2., 8., 1.)

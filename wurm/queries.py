@@ -1,9 +1,9 @@
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from typing import Any
 
 from . import sql
 from .connection import execute, WurmError
-from .typemaps import from_stored, to_stored
+from .typemaps import from_stored, to_stored, columns_for
 
 @dataclass(frozen=True)
 class Comparison:
@@ -82,16 +82,19 @@ def ensure_comparison(value):
     return eq(value)
 
 def encode_query_value(table, fieldname, value):
-    for field in fields(table):
-        if field.name == fieldname:
-            return to_stored(fieldname, field.type, value)
+    for field, ty in table.__fields_info__.items():
+        if field == fieldname:
+            return to_stored(fieldname, ty, value)
     raise WurmError(f'invalid query: {table.__name__}.{fieldname} does not exist')
 
 def decode_row(table, row):
-    values = {name: from_stored(ty, stored_value)
-        for stored_value, (name, ty)
-        in zip(row, table.__fields_info__.items())
-    }
+    values = {}
+    for name, ty in table.__fields_info__.items():
+        columns = len(list(columns_for(name, ty)))
+        values[name] = from_stored(row[:columns], ty)
+        row = row[columns:]
+    assert not row
+
     if 'rowid' in values:
         rowid = values.pop('rowid')
     else:
@@ -104,7 +107,7 @@ def decode_row(table, row):
 class Query:
     """Represents one or more queries on a specified table.
 
-    :samp:`Query({table}, filters)` is equivalent to :samp:`{table}.query(**filters)``"""
+    :samp:`Query({table}, filters)` is equivalent to :samp:`{table}.query(**filters)`"""
     def __init__(self, table: type, filters: dict):
         self.table = table
         self.filters = {key: ensure_comparison(value) for key, value
@@ -128,7 +131,7 @@ class Query:
     def select_with_limit(self, limit=None):
         """Create an iterator over the results of this query.
 
-        This accesses the database.
+        .. note:: This method accesses the connected database.
 
         :param limit: The number of results to limit this query to.
         :type limit: int or None

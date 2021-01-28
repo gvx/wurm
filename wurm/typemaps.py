@@ -77,8 +77,46 @@ def register_type(python_type, sql_type, *, encode, decode):
         sql_equiv = SQL_EQUIVALENTS[sql_type]
     TYPE_MAPPING[python_type] = StoredValueTypeMap(sql_equiv, encode, decode)
 
+def register_dataclass(dclass):
+    '''Registers a dataclass for use in model fields.
+
+    This is a convenience function that can optionally be used as a
+    decorator. Given::
+
+        @dataclasses.dataclass
+        class Color:
+            r: float
+            g: float
+            b: float
+
+    then the following::
+
+        register_dataclass(Color)
+
+    is equivalent to::
+
+        register_type(Color, dict(r=float, g=float, b=float),
+            encode=dataclasses.astuple, decode=Color)
+
+    In either case, the model::
+
+        class MyTable(Table):
+            color: Color
+
+    will have the fields ``color_r``, ``color_g`` and ``color_b``, which
+    will transparently be converted to and from ``Color`` objects.
+
+    :param dclass: The dataclass to register
+    :returns: The registered dataclass
+    '''
+    from dataclasses import astuple, is_dataclass, fields
+    assert is_dataclass(dclass)
+    register_type(dclass,
+        {field.name: field.type for field in fields(dclass)},
+        encode=astuple, decode=dclass)
+    return dclass
+
 def columns_for(field_name, python_type):
-    python_type = unwrap_type(python_type)
     from .tables import BaseTable
     if issubclass(python_type, BaseTable):
         return (f'{field_name}_{pk}'
@@ -89,7 +127,6 @@ def columns_for(field_name, python_type):
     return field_name,
 
 def to_stored(field_name, python_type, value):
-    python_type = unwrap_type(python_type)
     if value is None:
         return dict.fromkeys(columns_for(field_name, python_type))
 
@@ -112,44 +149,30 @@ def unwrap_type(ty):
         return get_args(ty)[0]
     return ty
 
-def from_stored(python_type, value):
-    if value is None:
+def from_stored(stored_tuple, python_type):
+    if all(v is None for v in stored_tuple):
         return None
-    if get_origin(python_type) is Annotated:
-        python_type = get_args(python_type)[0]
     from .tables import BaseTable
     from .queries import Query
     if issubclass(python_type, BaseTable):
         # FIXME: this is problematic for recursive foreign keys
         # not to mention the n + 1 problem
-        pk, = python_type.__primary_key__
-        return Query(python_type, {pk: value}).one()
-    return TYPE_MAPPING[python_type].decode(value)
+        return Query(python_type, dict(zip(python_type.__primary_key__, stored_tuple))).one()
+    return TYPE_MAPPING[python_type].decode(*stored_tuple)
 
 def sql_type_for(fieldname, python_type):
-    postfix = ['']
-    if get_origin(python_type) is Annotated:
-        python_type, *rest = get_args(python_type)
-        if any(_UniqueMarker is arg for arg in rest):
-            postfix.append('UNIQUE') # FIXME: UNIQUE needs to be
-            # defined like primary keys are, for when the field is
-            # mapped to multiple columns
     from .tables import BaseTable
     if issubclass(python_type, BaseTable):
-        if len(python_type.__primary_key__) > 1:
-            raise NotImplementedError('composite foreign keys are not '
-                'yet supported')
-        postfix.append('REFERENCES')
-        postfix.append(python_type.__table_name__)
-        pk, = python_type.__primary_key__
-        python_type = python_type.__fields_info__[pk]
-        return sql_type_for(f'{fieldname}_{pk}', python_type) + ' '.join(postfix)
+        pk = python_type.__primary_key__
+        info = python_type.__fields_info__
+        return ', '.join(sql_type_for(f'{fieldname}_{key}', info[key])
+            for key in pk)
 
     mapped_type = TYPE_MAPPING[python_type].sql_type
     if isinstance(mapped_type, MappingProxyType):
         return ', '.join(f'{fieldname}_{key} {ty}' for key, ty
             in mapped_type.items())
-    return f'{fieldname} {mapped_type}' + ' '.join(postfix)
+    return f'{fieldname} {mapped_type}'
 
 register_type(str, str, encode=passthrough, decode=passthrough)
 register_type(bytes, bytes, encode=passthrough, decode=passthrough)

@@ -9,6 +9,16 @@ def create_primary_key(table):
     return ", ".join(column for field in table.__primary_key__
             for column in columns_for(field, field_info[field]))
 
+def get_foreign_keys(table):
+    from .tables import BaseTable
+    for name, ty in table.__fields_info__.items():
+        if issubclass(ty, BaseTable):
+            yield ', '.join(columns_for(name, ty)), ty.__table_name__
+
+def create_foreign_keys(table):
+    return ''.join(f', foreign key ({cols}) references {tblname}'
+        for cols, tblname in get_foreign_keys(table))
+
 def create_indexes(table):
     table_name = table.__table_name__
     field_info = table.__fields_info__
@@ -19,7 +29,7 @@ def create_indexes(table):
 
 def create(table):
     return (f'create table if not exists {table.__table_name__}'
-        f'({create_fields(table)}, '
+        f'({create_fields(table)}{create_foreign_keys(table)}, '
         f'PRIMARY KEY ({create_primary_key(table)}))')
 
 def count(table, where=None):
