@@ -1,11 +1,18 @@
 from dataclasses import dataclass
 from datetime import date, time, datetime
 from pathlib import Path
-import sqlite3
 
 import pytest
 
 import wurm
+
+import sqlite3
+
+@pytest.fixture
+def connection():
+    token = wurm.setup_connection(sqlite3.connect(":memory:"))
+    yield
+    wurm.close_connection(token)
 
 
 @dataclass
@@ -78,14 +85,9 @@ class MultiColumnFields(wurm.Table):
 class ForeignKeyTest2(wurm.Table):
     point: CompositeKey
 
-
-@pytest.fixture
-def connection():
-    wurm.setup_connection(sqlite3.connect(":memory:"))
-
 def test_no_connection():
-    with pytest.raises(wurm.WurmError):
-        list(Point)
+    with pytest.raises(wurm.WurmError, match=r'setup_connection\(\) not called'):
+        Point(0,0).insert()
 
 def test_model(connection):
     assert Point.__table_name__ == 'Point'
@@ -340,7 +342,7 @@ def test_foreign_keys_1(connection):
     fk.insert()
     assert isinstance(ForeignKeyTest.query(rowid=1).one().point, Point)
 
-def test_foreign_keys_2():
+def test_foreign_keys_2(connection):
     c = CompositeKey(1, 2)
     c.insert()
     ForeignKeyTest2(c).insert()
@@ -372,3 +374,11 @@ def test_multicolumnfields(connection):
     MultiColumnFields(Color(0., 2., 8., 1.)).insert()
     o, = MultiColumnFields
     assert o.color == Color(0., 2., 8., 1.)
+
+def test_register_tuple_type():
+    class Test:
+        pass
+    wurm.register_type(Test, (str, int), encode=..., decode=...)
+    from wurm import typemaps
+    assert list(typemaps.columns_for('field', Test)) == ['field_0',
+        'field_1']

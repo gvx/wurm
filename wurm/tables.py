@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import sys
 from typing import ClassVar, Tuple, Dict, get_type_hints
 from types import MappingProxyType
 
@@ -179,3 +180,67 @@ def create_tables(tbl, conn):
             for create_index_query in sql.create_indexes(table):
                 execute(create_index_query, conn=conn)
         create_tables(table, conn)
+
+class relation:
+    """Describe a relationship between two tables.
+
+    :param str target: The name of either the target table, or the
+        specific field being referenced.
+    :param str lazy: How the relationship is loaded. Possible options:
+        ``'select'`` (the default): the relationship is loaded lazily,
+        as a list of target objects; ``'query'``: the relationship is
+        loaded lazily, as a query on the target model; ``'strict'``: the
+        relationship is loaded as a list when objects of the current
+        model are loaded."""
+    def __init__(self, target: str, lazy: str = 'select'):
+        self.target = target
+        assert lazy in {'select', 'query', 'strict'}
+        self.lazy = lazy
+    def _find_target(self, owner):
+        search_path = self.target.split('.')
+        ns = self.namespace
+        for name in search_path[:-1]:
+            ns = getattr(ns, name)
+        if isinstance(ns, TableMeta):
+            target_attr = search_path[-1]
+        else:
+            ns = getattr(ns, search_path[-1])
+            target_attr = None
+        if not isinstance(ns, TableMeta):
+            raise TypeError(f'invalid target {self.target} for '
+                f'{owner.__name__}.{self.name}')
+        target_table = ns
+        if target_attr is None:
+            possible_attrs = [fieldname
+                for fieldname, ty
+                in target_table.__fields_info__.items()
+                if ty is owner]
+            if not possible_attrs:
+                raise TypeError(f'Model {target_table.__name__} does '
+                    f'not have a {owner.__name__} field, so the '
+                    f'relation {owner.__name__}.{self.name} is invalid.')
+            if len(possible_attrs) > 1:
+                raise TypeError(f'Model {target_table.__name__} has '
+                    f'multiple {owner.__name__} fields: '
+                    f'{", ".join(possible_attrs[:-1])} and '
+                    f'{possible_attrs[-1]}. Specify the right field for '
+                    f'the relation {owner.__name__}.{self.name}.')
+            target_attr, = possible_attrs
+        elif target_table.__fields_info__[target_attr] is not owner:
+            raise TypeError(f'{self.target} is not {owner.__name__}, '
+                f'so the relation {owner.__name__}.{self.name} is invalid.')
+        self.target_table = target_table
+        self.target_attr = target_attr
+    def __set_name__(self, owner, name):
+        self.name = name
+        self.namespace = sys.modules[owner.__module__]
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self # FIXME: relation on class?
+        if not hasattr(self, 'target_table'):
+            self._find_target(owner)
+        q = Query(self.target_table, {self.target_attr: instance})
+        if self.lazy == 'select':
+            return list(q)
+        else:
+            return q

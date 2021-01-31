@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic, TypeVar, Type, Dict, Optional, Iterator
 
 from . import sql
 from .connection import execute, WurmError
@@ -104,21 +104,28 @@ def decode_row(table, row):
         item.rowid = rowid
     return item
 
-class Query:
+T = TypeVar('T')
+
+class Query(Generic[T]):
     """Represents one or more queries on a specified table.
 
     :samp:`Query({table}, filters)` is equivalent to :samp:`{table}.query(**filters)`"""
-    def __init__(self, table: type, filters: dict):
+    table: Type[T]
+    filters: Dict[str, Comparison]
+    comparisons: str
+    values: Dict[str, Any]
+    def __init__(self, table: Type[T], filters: Dict[str, Any]) -> None:
         self.table = table
         self.filters = {key: ensure_comparison(value) for key, value
             in filters.items()}
-        self.comparisons = ' and '.join(f'{key}{value.op}:{key}'
-            for key, value in self.filters.items())
-        self.values = {column: cooked
+        values = [(column, value.op, cooked)
             for key, value in self.filters.items()
             for column, cooked
-            in encode_query_value(table, key, value.value).items()}
-    def __len__(self):
+            in encode_query_value(table, key, value.value).items()]
+        self.values = {column: cooked for column, _, cooked in values}
+        self.comparisons = ' and '.join(f'{column}{op}:{column}'
+            for column, op, _ in values)
+    def __len__(self) -> int:
         """Returns the number of rows matching this query.
 
         .. note:: This method accesses the connected database.
@@ -128,7 +135,7 @@ class Query:
         """
         c, = execute(sql.count(self.table, self.comparisons), self.values).fetchone()
         return c
-    def select_with_limit(self, limit=None):
+    def select_with_limit(self, limit: Optional[int] = None) -> Iterator[T]:
         """Create an iterator over the results of this query.
 
         .. note:: This method accesses the connected database.
@@ -142,34 +149,34 @@ class Query:
             values = self.values
         for row in execute(sql.select(self.table, self.comparisons, limit is not None), values):
             yield decode_row(self.table, row)
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         """Iterate over the results of this query.
 
         .. note:: This method accesses the connected database.
 
         Equivalent to :meth:`select_with_limit` without specifying *limit*."""
         return self.select_with_limit()
-    def _only_first(self, *, of):
+    def _only_first(self, *, of: int) -> T:
         try:
             i, = self.select_with_limit(of)
         except ValueError as e:
             raise WurmError(e.args[0].replace('values to unpack', 'rows returned')) from None
         return i
-    def first(self):
+    def first(self) -> T:
         """Return the first result of this query.
 
         .. note:: This method accesses the connected database.
 
         :raises WurmError: if this query returns zero results"""
         return self._only_first(of=1)
-    def one(self):
+    def one(self) -> T:
         """Return the only result of this query.
 
         .. note:: This method accesses the connected database.
 
         :raises WurmError: if this query returns zero results or more than one"""
         return self._only_first(of=2)
-    def delete(self):
+    def delete(self) -> None:
         """Delete the objects matching this query.
 
         .. warning:: Calling this on an empty query deletes all rows

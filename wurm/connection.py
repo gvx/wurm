@@ -27,7 +27,11 @@ def setup_connection(conn):
     :class:`sqlite3.Connection`, before accessing the database via wurm.
 
     This records the connection and ensures all tables are created."""
-    connection.set(conn)
+    token = connection.set(conn)
     execute('PRAGMA foreign_keys = ON', conn=conn)
     from .tables import BaseTable, create_tables
     create_tables(BaseTable, conn)
+    return token
+
+def close_connection(token):
+    connection.reset(token)
