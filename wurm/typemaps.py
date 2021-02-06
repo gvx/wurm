@@ -153,11 +153,10 @@ def from_stored(stored_tuple, python_type):
     if all(v is None for v in stored_tuple):
         return None
     from .tables import BaseTable
-    from .queries import Query
     if issubclass(python_type, BaseTable):
         # FIXME: this is problematic for recursive foreign keys
         # not to mention the n + 1 problem
-        return Query(python_type, dict(zip(python_type.__primary_key__, stored_tuple))).one()
+        return python_type.get_object(stored_tuple, None)
     return TYPE_MAPPING[python_type].decode(*stored_tuple)
 
 def sql_type_for(fieldname, python_type):

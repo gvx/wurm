@@ -5,8 +5,8 @@ from types import MappingProxyType
 from weakref import WeakValueDictionary
 
 from .typemaps import (to_stored, Primary, is_primary, unwrap_type,
-    is_unique)
-from .queries import Query
+    is_unique, columns_for)
+from .queries import Query, decode_row
 from .connection import execute
 from . import sql
 
@@ -28,10 +28,10 @@ def indexes(fields):
         if is_unique(value))
 
 def primary_key_columns(item):
-    for fieldname, ty in item.__fields_info__.items():
-        if fieldname in item.__primary_key__:
-            yield from to_stored(fieldname, ty,
-                getattr(item, fieldname)).values()
+    info = item.__fields_info__
+    for fieldname in item.__primary_key__:
+        yield from to_stored(fieldname, info[fieldname],
+            getattr(item, fieldname)).values()
 
 class relation:
     """Describe a relationship between two tables.
@@ -156,6 +156,16 @@ class TableMeta(type):
         return Query(self, kwargs)
     def get_object(self, pk, values):
         if pk not in self.__id_map__:
+            if values is None:
+                info = self.__fields_info__
+                params = {name: value for field in self.__primary_key__
+                    for name, value
+                    in zip(columns_for(field, info[field]), pk)}
+                comparisons = ' and '.join(f'{column}=:{column}'
+                    for column in params)
+                params['_limit_'] = 1
+                row = execute(sql.select(self, comparisons, True), params).fetchone()
+                return decode_row(self, row)
             if 'rowid' in values:
                 rowid = values.pop('rowid')
             else:

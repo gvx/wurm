@@ -138,3 +138,12 @@ def test_relation_6(connection):
     Child7(parent=p).insert()
     Child7(parent=p).insert()
     assert len(p.children) == 0
+
+
+def test_relation_7(connection):
+    p = Parent()
+    p.insert()
+    Child(parent=p).insert()
+    Parent.del_object(p)
+    c, = Child
+    assert len(c.parent.children) == 1
