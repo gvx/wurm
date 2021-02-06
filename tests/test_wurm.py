@@ -135,14 +135,15 @@ def test_model_get(connection):
 def test_model_get_doesnt_cache(connection):
     p1 = Point(10, 20)
     p1.insert()
-    assert Point.query(rowid=p1.rowid).one() is not p1
+    assert Point.query(rowid=p1.rowid).one() is p1
 
 def test_model_update(connection):
     p1 = Point(10, 20)
     p1.insert()
     p1.y = 1000
     p1.commit()
-    assert Point.query(rowid=p1.rowid).one().y == 1000
+    del p1
+    assert Point.query().one().y == 1000
 
 def test_model_delete1(connection):
     p1 = Point(10, 20)

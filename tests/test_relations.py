@@ -56,6 +56,13 @@ class Parent6(wurm.Table):
 class Child6(wurm.Table):
     parent: Parent6
 
+@dataclass
+class Parent7(wurm.Table):
+    children = wurm.relation('Child7.parent', lazy='strict')
+
+@dataclass
+class Child7(wurm.Table):
+    parent: Parent7
 
 def test_relation_1(connection):
     p = Parent()
@@ -103,3 +110,31 @@ def test_access_relation_twice(connection):
 
 def test_relation_3(connection):
     assert isinstance(Parent6().children, wurm.Query)
+
+def test_relation_4(connection):
+    p = Parent7()
+    p.insert()
+    Child7(parent=p).insert()
+    Child7(parent=p).insert()
+    Child7(parent=p).insert()
+    assert len(p.children) == 0
+
+def test_relation_5(connection):
+    p = Parent7()
+    p.insert()
+    p, = Parent7
+    Child7(parent=p).insert()
+    Child7(parent=p).insert()
+    Child7(parent=p).insert()
+    assert len(p.children) == 0
+
+
+def test_relation_6(connection):
+    p = Parent7()
+    p.insert()
+    Parent7.del_object(p) # remove object from identity mapping
+    p, = Parent7
+    Child7(parent=p).insert()
+    Child7(parent=p).insert()
+    Child7(parent=p).insert()
+    assert len(p.children) == 0

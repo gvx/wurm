@@ -89,20 +89,16 @@ def encode_query_value(table, fieldname, value):
 
 def decode_row(table, row):
     values = {}
+    pk = ()
     for name, ty in table.__fields_info__.items():
         columns = len(list(columns_for(name, ty)))
-        values[name] = from_stored(row[:columns], ty)
+        segment = row[:columns]
+        if name in table.__primary_key__:
+            pk += segment
+        values[name] = from_stored(segment, ty)
         row = row[columns:]
     assert not row
-
-    if 'rowid' in values:
-        rowid = values.pop('rowid')
-    else:
-        rowid = ...
-    item = table(**values)
-    if rowid is not ...:
-        item.rowid = rowid
-    return item
+    return table.get_object(pk, values)
 
 T = TypeVar('T')
 
