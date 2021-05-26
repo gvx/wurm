@@ -6,7 +6,7 @@ from weakref import WeakValueDictionary
 
 from .typemaps import (
     to_stored, Primary, is_primary, unwrap_type,
-    is_unique, columns_for)
+    is_unique, is_index, columns_for)
 from .queries import Query, decode_row
 from .connection import execute
 from . import sql
@@ -33,8 +33,8 @@ def data_fields(fields):
 
 def indexes(fields):
     return tuple(
-        (key, True) for key, value in fields.items()
-        if is_unique(value))
+        (key, is_unique(value)) for key, value in fields.items()
+        if is_index(value))
 
 
 def primary_key_columns(item):
@@ -109,7 +109,7 @@ class relation:
 
     def __get__(self, instance, owner=None):
         if instance is None:
-            return self # FIXME: relation on class?
+            return self  # FIXME: relation on class?
         if not hasattr(self, 'target_table'):
             self._find_target(owner)
         q = Query(self.target_table, {self.target_attr: instance})

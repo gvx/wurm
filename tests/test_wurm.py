@@ -41,6 +41,11 @@ class UniqueInt(wurm.Table):
 
 
 @dataclass
+class IndexOnInt(wurm.Table):
+    x: wurm.Index[int]
+
+
+@dataclass
 class SomeAbstractTable(wurm.Table, abstract=True):
     foo: str
 
@@ -260,6 +265,13 @@ def test_unique(connection):
     with pytest.raises(wurm.WurmError):
         UniqueInt(42).insert()
     assert UniqueInt.query(rowid=1).one()
+
+
+def test_nonunique_index(connection):
+    IndexOnInt(42).insert()
+    IndexOnInt(7).insert()
+    IndexOnInt(42).insert()
+    assert len(IndexOnInt.query(x=42)) == 2
 
 
 def test_other_annotated(connection):

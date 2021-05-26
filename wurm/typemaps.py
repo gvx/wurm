@@ -11,15 +11,24 @@ except ImportError:  # noqa
 T = TypeVar('T')
 _UniqueMarker = {'wurm-unique': True}
 _PrimaryMarker = {'wurm-primary': True}
+_IndexMarker = {'wurm-index': True}
 
 Unique = Annotated[T, _UniqueMarker]
 Primary = Annotated[T, _PrimaryMarker]
+Index = Annotated[T, _IndexMarker]
 
 
 def is_unique(ty: type) -> bool:
     if get_origin(ty) is Annotated:
         _, *args = get_args(ty)
         return any(_UniqueMarker is arg for arg in args)
+    return False
+
+
+def is_index(ty: type) -> bool:
+    if get_origin(ty) is Annotated:
+        _, *args = get_args(ty)
+        return any(_IndexMarker is arg for arg in args) or is_unique(ty)
     return False
 
 

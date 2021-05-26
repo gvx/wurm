@@ -75,7 +75,8 @@ type for each column has to be one of the following:
 * A type registered with :func:`wurm.register_type`.
 * A previously defined :class:`wurm.Table` or
   :class:`wurm.WithoutRowid` subclass.
-* :samp:`wurm.Primary[{T}]` or :samp:`wurm.Unique[{T}]`, where
+* :samp:`wurm.Primary[{T}]`, :samp:`wurm.Index[{T}]` or
+  :samp:`wurm.Unique[{T}]`, where
   :samp:`{T}` is one of the types mentioned above.
 
 
@@ -90,6 +91,12 @@ type for each column has to be one of the following:
    If you attempt change the database in a way that would cause two
    rows to share a primary key, the operation is rolled back, and a
    :class:`~wurm.WurmError` is raised.
+
+.. data:: wurm.Index
+
+   Using :samp:`Index[{T}]` as a type annotation in a table definition
+   is equivalent to using :samp:`{T}`, except that a (non-``UNIQUE``) index
+   is created for the field.
 
 .. data:: wurm.Unique
 
