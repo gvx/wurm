@@ -460,3 +460,34 @@ def test_register_tuple_type():
     from wurm import typemaps
     assert (list(typemaps.columns_for('field', Test)) ==
             ['field_0', 'field_1'])
+
+
+def test_contextmanager(connection):
+    p = Point(1, 1)
+    p.insert()
+    with p:
+        p.x = 100
+    Point.del_object(p)
+    p, = Point
+    assert p == Point(100, 1)
+
+
+def test_no_contextmanager(connection):
+    p = Point(1, 1)
+    p.insert()
+    p.x = 100
+    Point.del_object(p)
+    p, = Point
+    assert p == Point(1, 1)
+
+
+def test_contextmanager_2(connection):
+    p = Point(1, 1)
+    p.insert()
+    with pytest.raises(KeyboardInterrupt):
+        with p:
+            p.x = 100
+            raise KeyboardInterrupt
+    Point.del_object(p)
+    p, = Point
+    assert p == Point(1, 1)

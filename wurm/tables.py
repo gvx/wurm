@@ -245,6 +245,15 @@ class BaseTable(metaclass=TableMeta, abstract=True):
     The above will not create a new table, but subclasses of
     ``HasOwner`` will have a field called ``owner`` and a method
     called ``display_owner``.
+
+    Models are context managers, so one could write::
+
+        with MyTable.query(field=value) as obj:
+            obj.field = other_value
+
+    This automatically calls :meth:`commit` on ``obj`` as long as
+    no exception is raised inside the ``with``-block, in which case
+    ``obj`` is left in a dirty state.
     """
     __id_map__: ClassVar[dict]
     __fields_info__: ClassVar[Dict[str, type]]
@@ -304,6 +313,13 @@ class BaseTable(metaclass=TableMeta, abstract=True):
             for key, ty in self.__fields_info__.items()
             for column, cooked
             in to_stored(key, ty, getattr(self, key)).items()}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.commit()  # FIXME: insert if new?
 
 
 @dataclass
