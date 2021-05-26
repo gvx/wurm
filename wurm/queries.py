@@ -5,10 +5,12 @@ from . import sql
 from .connection import execute, WurmError
 from .typemaps import from_stored, to_stored, columns_for
 
+
 @dataclass(frozen=True)
 class Comparison:
     op: str
     value: Any
+
 
 def gt(value):
     """Helper function for selecting fields whose value is greater than
@@ -21,6 +23,7 @@ def gt(value):
     :returns: object used in queries for comparison"""
     return Comparison('>', value)
 
+
 def lt(value):
     """Helper function for selecting fields whose value is lesser than
     *value*
@@ -31,6 +34,7 @@ def lt(value):
     :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('<', value)
+
 
 def ge(value):
     """Helper function for selecting fields whose value is greater than
@@ -43,6 +47,7 @@ def ge(value):
     :returns: object used in queries for comparison"""
     return Comparison('>=', value)
 
+
 def le(value):
     """Helper function for selecting fields whose value is lesser than
     or equal to *value*
@@ -53,6 +58,7 @@ def le(value):
     :param value: value being compared to the field
     :returns: object used in queries for comparison"""
     return Comparison('<=', value)
+
 
 def eq(value):
     """Helper function for selecting fields whose value is equal to
@@ -65,6 +71,7 @@ def eq(value):
     :returns: object used in queries for comparison"""
     return Comparison('=', value)
 
+
 def ne(value):
     """Helper function for selecting fields whose value is not equal to
     *value*
@@ -76,16 +83,19 @@ def ne(value):
     :returns: object used in queries for comparison"""
     return Comparison('!=', value)
 
+
 def ensure_comparison(value):
     if isinstance(value, Comparison):
         return value
     return eq(value)
+
 
 def encode_query_value(table, fieldname, value):
     for field, ty in table.__fields_info__.items():
         if field == fieldname:
             return to_stored(fieldname, ty, value)
     raise WurmError(f'invalid query: {table.__name__}.{fieldname} does not exist')
+
 
 def decode_row(table, row):
     values = {}
@@ -100,7 +110,9 @@ def decode_row(table, row):
     assert not row
     return table.get_object(pk, values)
 
+
 T = TypeVar('T')
+
 
 class Query(Generic[T]):
     """Represents one or more queries on a specified table.
@@ -110,17 +122,22 @@ class Query(Generic[T]):
     filters: Dict[str, Comparison]
     comparisons: str
     values: Dict[str, Any]
+
     def __init__(self, table: Type[T], filters: Dict[str, Any]) -> None:
         self.table = table
-        self.filters = {key: ensure_comparison(value) for key, value
+        self.filters = {
+            key: ensure_comparison(value) for key, value
             in filters.items()}
-        values = [(column, value.op, cooked)
+        values = [
+            (column, value.op, cooked)
             for key, value in self.filters.items()
             for column, cooked
             in encode_query_value(table, key, value.value).items()]
         self.values = {column: cooked for column, _, cooked in values}
-        self.comparisons = ' and '.join(f'{column}{op}:{column}'
+        self.comparisons = ' and '.join(
+            f'{column}{op}:{column}'
             for column, op, _ in values)
+
     def __len__(self) -> int:
         """Returns the number of rows matching this query.
 
@@ -131,6 +148,7 @@ class Query(Generic[T]):
         """
         c, = execute(sql.count(self.table, self.comparisons), self.values).fetchone()
         return c
+
     def select_with_limit(self, limit: Optional[int] = None) -> Iterator[T]:
         """Create an iterator over the results of this query.
 
@@ -145,6 +163,7 @@ class Query(Generic[T]):
             values = self.values
         for row in execute(sql.select(self.table, self.comparisons, limit is not None), values):
             yield decode_row(self.table, row)
+
     def __iter__(self) -> Iterator[T]:
         """Iterate over the results of this query.
 
@@ -152,12 +171,14 @@ class Query(Generic[T]):
 
         Equivalent to :meth:`select_with_limit` without specifying *limit*."""
         return self.select_with_limit()
+
     def _only_first(self, *, of: int) -> T:
         try:
             i, = self.select_with_limit(of)
         except ValueError as e:
             raise WurmError(e.args[0].replace('values to unpack', 'rows returned')) from None
         return i
+
     def first(self) -> T:
         """Return the first result of this query.
 
@@ -165,6 +186,7 @@ class Query(Generic[T]):
 
         :raises WurmError: if this query returns zero results"""
         return self._only_first(of=1)
+
     def one(self) -> T:
         """Return the only result of this query.
 
@@ -172,6 +194,7 @@ class Query(Generic[T]):
 
         :raises WurmError: if this query returns zero results or more than one"""
         return self._only_first(of=2)
+
     def delete(self) -> None:
         """Delete the objects matching this query.
 
@@ -183,4 +206,6 @@ class Query(Generic[T]):
         :returns: the number of rows deleted
         :rtype: int
         """
-        return execute(sql.delete(self.table, self.comparisons), self.values).rowcount
+        return execute(
+            sql.delete(self.table, self.comparisons),
+            self.values).rowcount

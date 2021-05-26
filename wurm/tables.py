@@ -4,34 +4,46 @@ from typing import ClassVar, Tuple, Dict, get_type_hints
 from types import MappingProxyType
 from weakref import WeakValueDictionary
 
-from .typemaps import (to_stored, Primary, is_primary, unwrap_type,
+from .typemaps import (
+    to_stored, Primary, is_primary, unwrap_type,
     is_unique, columns_for)
 from .queries import Query, decode_row
 from .connection import execute
 from . import sql
 
+
 def table_fields(table):
-    return {key: value for key, value
+    return {
+        key: value for key, value
         in get_type_hints(table, include_extras=True).items()
         if not key.startswith('_')}
 
+
 def primary_key_fields(fields):
-    return tuple(key for key, value in fields.items()
+    return tuple(
+        key for key, value in fields.items()
         if is_primary(value))
 
+
 def data_fields(fields):
-    return tuple(key for key, value in fields.items()
+    return tuple(
+        key for key, value in fields.items()
         if not is_primary(value))
 
+
 def indexes(fields):
-    return tuple((key, True) for key, value in fields.items()
+    return tuple(
+        (key, True) for key, value in fields.items()
         if is_unique(value))
+
 
 def primary_key_columns(item):
     info = item.__fields_info__
     for fieldname in item.__primary_key__:
-        yield from to_stored(fieldname, info[fieldname],
+        yield from to_stored(
+            fieldname, info[fieldname],
             getattr(item, fieldname)).values()
+
 
 class relation:
     """Describe a relationship between two tables.
@@ -44,10 +56,12 @@ class relation:
         loaded lazily, as a query on the target model; ``'strict'``: the
         relationship is loaded as a list when objects of the current
         model are loaded."""
+
     def __init__(self, target: str, lazy: str = 'select'):
         self.target = target
         assert lazy in {'select', 'query', 'strict'}
         self.lazy = lazy
+
     def _find_target(self, owner):
         search_path = self.target.split('.')
         ns = self.namespace
@@ -59,33 +73,40 @@ class relation:
             ns = getattr(ns, search_path[-1])
             target_attr = None
         if not isinstance(ns, TableMeta):
-            raise TypeError(f'invalid target {self.target} for '
+            raise TypeError(
+                f'invalid target {self.target} for '
                 f'{owner.__name__}.{self.name}')
         target_table = ns
         if target_attr is None:
-            possible_attrs = [fieldname
+            possible_attrs = [
+                fieldname
                 for fieldname, ty
                 in target_table.__fields_info__.items()
                 if ty is owner]
             if not possible_attrs:
-                raise TypeError(f'Model {target_table.__name__} does '
+                raise TypeError(
+                    f'Model {target_table.__name__} does '
                     f'not have a {owner.__name__} field, so the '
                     f'relation {owner.__name__}.{self.name} is invalid.')
             if len(possible_attrs) > 1:
-                raise TypeError(f'Model {target_table.__name__} has '
+                raise TypeError(
+                    f'Model {target_table.__name__} has '
                     f'multiple {owner.__name__} fields: '
                     f'{", ".join(possible_attrs[:-1])} and '
                     f'{possible_attrs[-1]}. Specify the right field for '
                     f'the relation {owner.__name__}.{self.name}.')
             target_attr, = possible_attrs
         elif target_table.__fields_info__[target_attr] is not owner:
-            raise TypeError(f'{self.target} is not {owner.__name__}, '
+            raise TypeError(
+                f'{self.target} is not {owner.__name__}, '
                 f'so the relation {owner.__name__}.{self.name} is invalid.')
         self.target_table = target_table
         self.target_attr = target_attr
+
     def __set_name__(self, owner, name):
         self.name = name
         self.namespace = sys.modules[owner.__module__]
+
     def __get__(self, instance, owner=None):
         if instance is None:
             return self # FIXME: relation on class?
@@ -97,10 +118,12 @@ class relation:
         else:
             return list(q)
 
+
 def strict_relations(classdict):
     for key, value in classdict.items():
         if isinstance(value, relation) and value.lazy == 'strict':
             yield key
+
 
 class TableMeta(type):
     def __new__(cls, clsname, bases, classdict, name=None, abstract=False):
@@ -120,6 +143,7 @@ class TableMeta(type):
             t.__strict_relations__ = tuple(strict_relations(classdict))
             t.__id_map__ = WeakValueDictionary()
         return t
+
     def __iter__(self):
         """Iterate over all the objects in the table.
 
@@ -127,8 +151,10 @@ class TableMeta(type):
 
         """
         return iter(self.query())
+
     def __bool__(self):
         return True
+
     def __len__(self):
         """The total number of rows in this table.
 
@@ -136,6 +162,7 @@ class TableMeta(type):
 
         """
         return len(self.query())
+
     def query(self, **kwargs):
         """Create a query object.
 
@@ -154,17 +181,21 @@ class TableMeta(type):
         :returns: A query for this table.
         :rtype: Query"""
         return Query(self, kwargs)
+
     def get_object(self, pk, values):
         if pk not in self.__id_map__:
             if values is None:
                 info = self.__fields_info__
-                params = {name: value for field in self.__primary_key__
+                params = {
+                    name: value for field in self.__primary_key__
                     for name, value
                     in zip(columns_for(field, info[field]), pk)}
-                comparisons = ' and '.join(f'{column}=:{column}'
+                comparisons = ' and '.join(
+                    f'{column}=:{column}'
                     for column in params)
                 params['_limit_'] = 1
-                row = execute(sql.select(self, comparisons, True), params).fetchone()
+                row = execute(
+                    sql.select(self, comparisons, True), params).fetchone()
                 return decode_row(self, row)
             if 'rowid' in values:
                 rowid = values.pop('rowid')
@@ -176,10 +207,13 @@ class TableMeta(type):
             for rel in self.__strict_relations__:
                 item.__dict__[rel] = getattr(item, rel)
         return self.__id_map__[pk]
+
     def add_object(self, item):
         self.__id_map__[tuple(primary_key_columns(item))] = item
+
     def del_object(self, item):
         del self.__id_map__[tuple(primary_key_columns(item))]
+
 
 @dataclass
 class BaseTable(metaclass=TableMeta, abstract=True):
@@ -220,13 +254,16 @@ class BaseTable(metaclass=TableMeta, abstract=True):
     __strict_relations__: ClassVar[Tuple[str, ...]]
     __abstract__: ClassVar[bool]
     __table_name__: ClassVar[str]
+
     def __new__(cls, *args, **kwargs):
         if cls.__abstract__:
             raise TypeError('cannot instantiate abstract table')
         return super().__new__(cls)
+
     def __post_init__(self):
         for rel in self.__strict_relations__:
             self.__dict__[rel] = []
+
     def insert(self):
         """Insert a new object into the database.
 
@@ -237,6 +274,7 @@ class BaseTable(metaclass=TableMeta, abstract=True):
         if 'rowid' in self.__primary_key__:
             self.rowid = cursor.lastrowid
         type(self).add_object(self)
+
     def commit(self):
         """Commits any changes to the object to the database.
 
@@ -244,6 +282,7 @@ class BaseTable(metaclass=TableMeta, abstract=True):
 
         """
         execute(sql.update(type(self)), self._encode_row())
+
     def delete(self):
         """Deletes this object from the database.
 
@@ -255,22 +294,29 @@ class BaseTable(metaclass=TableMeta, abstract=True):
         """
         Query(type(self), self._primary_key()).delete()
         type(self).del_object(self)
+
     def _primary_key(self):
         return {key: getattr(self, key) for key in self.__primary_key__}
+
     def _encode_row(self):
-        return {column: cooked
+        return {
+            column: cooked
             for key, ty in self.__fields_info__.items()
             for column, cooked
             in to_stored(key, ty, getattr(self, key)).items()}
+
 
 @dataclass
 class WithoutRowid(BaseTable, abstract=True):
     pass
 
+
 @dataclass
 class Table(BaseTable, abstract=True):
     # technically rowid is Optional[int], but that's not implemented yet
-    rowid: Primary[int] = field(init=False, default=None, compare=False, repr=False)
+    rowid: Primary[int] = field(
+        init=False, default=None, compare=False, repr=False)
+
     def delete(self):
         """Deletes this object from the database.
 
@@ -285,6 +331,7 @@ class Table(BaseTable, abstract=True):
         super().delete()
         self.rowid = None
 
+
 def create_tables(tbl, conn):
     for table in tbl.__subclasses__():
         if not table.__abstract__:
@@ -292,4 +339,3 @@ def create_tables(tbl, conn):
             for create_index_query in sql.create_indexes(table):
                 execute(create_index_query, conn=conn)
         create_tables(table, conn)
-

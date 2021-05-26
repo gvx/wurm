@@ -1,13 +1,18 @@
 from .typemaps import sql_type_for, columns_for
 
+
 def create_fields(table):
-    return ", ".join(sql_type_for(name, ty)
+    return ", ".join(
+        sql_type_for(name, ty)
         for name, ty in table.__fields_info__.items())
+
 
 def create_primary_key(table):
     field_info = table.__fields_info__
-    return ", ".join(column for field in table.__primary_key__
-            for column in columns_for(field, field_info[field]))
+    return ", ".join(
+        column for field in table.__primary_key__
+        for column in columns_for(field, field_info[field]))
+
 
 def get_foreign_keys(table):
     from .tables import BaseTable
@@ -15,22 +20,29 @@ def get_foreign_keys(table):
         if issubclass(ty, BaseTable):
             yield ', '.join(columns_for(name, ty)), ty.__table_name__
 
+
 def create_foreign_keys(table):
-    return ''.join(f', foreign key ({cols}) references {tblname}'
+    return ''.join(
+        f', foreign key ({cols}) references {tblname}'
         for cols, tblname in get_foreign_keys(table))
+
 
 def create_indexes(table):
     table_name = table.__table_name__
     field_info = table.__fields_info__
     for field, unique in table.__indexes__:
-        yield (f'create {unique and "unique" or ""} index if not exists'
+        yield (
+            f'create {unique and "unique" or ""} index if not exists'
             f' {table_name}_{field}_index on {table_name} '
             f'({", ".join(columns_for(field, field_info[field]))})')
 
+
 def create(table):
-    return (f'create table if not exists {table.__table_name__}'
+    return (
+        f'create table if not exists {table.__table_name__}'
         f'({create_fields(table)}{create_foreign_keys(table)}, '
         f'PRIMARY KEY ({create_primary_key(table)}))')
+
 
 def count(table, where=None):
     if not where:
@@ -38,6 +50,7 @@ def count(table, where=None):
     else:
         where_clause = f'where {where}'
     return f'select count(*) from {table.__table_name__} {where_clause}'
+
 
 def select(table, where=None, limit=False):
     if where:
@@ -50,15 +63,25 @@ def select(table, where=None, limit=False):
         limit_clause = ''
     return f'select * from {table.__table_name__} {where_clause} {limit_clause}'
 
+
 def insert(table):
-    columns = [column for field, ty in table.__fields_info__.items()
+    columns = [
+        column for field, ty in table.__fields_info__.items()
         for column in columns_for(field, ty)]
     return f'insert into {table.__table_name__} ({", ".join(columns)}) values({", ".join(":" + column for column in columns)})'
 
+
 def update(table):
-    return f'''update {table.__table_name__} set {", ".join(f"{column}=:{column}" for field in table.__data_fields__
-        for column in columns_for(field, table.__fields_info__[field])) } where {", ".join(f"{column}=:{column}" for field in table.__primary_key__
-        for column in columns_for(field, table.__fields_info__[field])) }'''
+    column_values = ", ".join(
+        f"{column}=:{column}"
+        for field in table.__data_fields__
+        for column in columns_for(field, table.__fields_info__[field]))
+    condition = ", ".join(
+        f"{column}=:{column}"
+        for field in table.__primary_key__
+        for column in columns_for(field, table.__fields_info__[field]))
+    return f'update {table.__table_name__} set {column_values} where {condition}'
+
 
 def delete(table, where=None):
     if where:

@@ -3,11 +3,13 @@ import sqlite3
 
 connection = ContextVar('connection')
 
+
 class WurmError(Exception):
     """General error for a database operation failing.
 
     Its ``__cause__`` attribute refers to the relevant
     :class:`sqlite3.Error` when that exists."""
+
 
 def execute(*args, conn=None):
     if conn is None:
@@ -22,6 +24,7 @@ def execute(*args, conn=None):
     except sqlite3.Error as e:
         raise WurmError from e
 
+
 def setup_connection(conn):
     """Call this once in each OS thread with a
     :class:`sqlite3.Connection`, before accessing the database via wurm.
@@ -32,6 +35,7 @@ def setup_connection(conn):
     from .tables import BaseTable, create_tables
     create_tables(BaseTable, conn)
     return token
+
 
 def close_connection(token):
     connection.reset(token)

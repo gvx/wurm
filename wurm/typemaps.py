@@ -15,11 +15,13 @@ _PrimaryMarker = {'wurm-primary': True}
 Unique = Annotated[T, _UniqueMarker]
 Primary = Annotated[T, _PrimaryMarker]
 
+
 def is_unique(ty: type) -> bool:
     if get_origin(ty) is Annotated:
         _, *args = get_args(ty)
         return any(_UniqueMarker is arg for arg in args)
     return False
+
 
 def is_primary(ty: type) -> bool:
     if get_origin(ty) is Annotated:
@@ -27,17 +29,21 @@ def is_primary(ty: type) -> bool:
         return any(_PrimaryMarker is arg for arg in args)
     return False
 
+
 class StoredValueTypeMap(NamedTuple):
     sql_type: str
     encode: callable
     decode: callable
 
+
 TYPE_MAPPING = {}
 
 SQL_EQUIVALENTS = {int: 'INTEGER', str: 'TEXT', float: 'REAL', bytes: ''}
 
+
 def passthrough(x):
     return x
+
 
 def register_type(python_type, sql_type, *, encode, decode):
     """Registers a type for use in model fields.
@@ -70,12 +76,15 @@ def register_type(python_type, sql_type, *, encode, decode):
     :type decode: sql_type -> python_type"""
     assert python_type not in TYPE_MAPPING
     if isinstance(sql_type, dict):
-        sql_equiv = MappingProxyType({key: SQL_EQUIVALENTS[ty] for key, ty in sql_type.items()})
+        sql_equiv = MappingProxyType(
+            {key: SQL_EQUIVALENTS[ty] for key, ty in sql_type.items()})
     elif isinstance(sql_type, tuple):
-        sql_equiv = MappingProxyType({str(i): SQL_EQUIVALENTS[ty] for i, ty in enumerate(sql_type)})
+        sql_equiv = MappingProxyType(
+            {str(i): SQL_EQUIVALENTS[ty] for i, ty in enumerate(sql_type)})
     else:
         sql_equiv = SQL_EQUIVALENTS[sql_type]
     TYPE_MAPPING[python_type] = StoredValueTypeMap(sql_equiv, encode, decode)
+
 
 def register_dataclass(dclass):
     '''Registers a dataclass for use in model fields.
@@ -111,10 +120,12 @@ def register_dataclass(dclass):
     '''
     from dataclasses import astuple, is_dataclass, fields
     assert is_dataclass(dclass)
-    register_type(dclass,
+    register_type(
+        dclass,
         {field.name: field.type for field in fields(dclass)},
         encode=astuple, decode=dclass)
     return dclass
+
 
 def columns_for(field_name, python_type):
     from .tables import BaseTable
@@ -126,6 +137,7 @@ def columns_for(field_name, python_type):
         return (f'{field_name}_{key}' for key in typemap.sql_type)
     return field_name,
 
+
 def to_stored(field_name, python_type, value):
     if value is None:
         return dict.fromkeys(columns_for(field_name, python_type))
@@ -133,10 +145,12 @@ def to_stored(field_name, python_type, value):
     from .tables import BaseTable
     if issubclass(python_type, BaseTable):
         assert isinstance(value, python_type)
-        return {column_name: val
+        return {
+            column_name: val
             for pk in python_type.__primary_key__
             for column_name, val
-            in to_stored(f'{field_name}_{pk}',
+            in to_stored(
+                f'{field_name}_{pk}',
                 python_type.__fields_info__[pk], getattr(value, pk)).items()}
 
     typemap = TYPE_MAPPING[python_type]
@@ -144,10 +158,12 @@ def to_stored(field_name, python_type, value):
         return {f'{field_name}_{key}': val for key, val in zip(typemap.sql_type, typemap.encode(value))}
     return {field_name: typemap.encode(value)}
 
+
 def unwrap_type(ty):
     if get_origin(ty) is Annotated:
         return get_args(ty)[0]
     return ty
+
 
 def from_stored(stored_tuple, python_type):
     if all(v is None for v in stored_tuple):
@@ -159,19 +175,23 @@ def from_stored(stored_tuple, python_type):
         return python_type.get_object(stored_tuple, None)
     return TYPE_MAPPING[python_type].decode(*stored_tuple)
 
+
 def sql_type_for(fieldname, python_type):
     from .tables import BaseTable
     if issubclass(python_type, BaseTable):
         pk = python_type.__primary_key__
         info = python_type.__fields_info__
-        return ', '.join(sql_type_for(f'{fieldname}_{key}', info[key])
+        return ', '.join(
+            sql_type_for(f'{fieldname}_{key}', info[key])
             for key in pk)
 
     mapped_type = TYPE_MAPPING[python_type].sql_type
     if isinstance(mapped_type, MappingProxyType):
-        return ', '.join(f'{fieldname}_{key} {ty}' for key, ty
+        return ', '.join(
+            f'{fieldname}_{key} {ty}' for key, ty
             in mapped_type.items())
     return f'{fieldname} {mapped_type}'
+
 
 register_type(str, str, encode=passthrough, decode=passthrough)
 register_type(bytes, bytes, encode=passthrough, decode=passthrough)

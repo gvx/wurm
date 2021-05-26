@@ -5,6 +5,7 @@ from .tables import WithoutRowid, Table, relation
 from .connection import WurmError, setup_connection, close_connection
 from .queries import lt, gt, le, ge, ne, eq, Query
 
-__all__ = ['register_type', 'register_dataclass', 'Unique', 'Primary',
+__all__ = [
+    'register_type', 'register_dataclass', 'Unique', 'Primary',
     'WurmError', 'WithoutRowid', 'Table', 'setup_connection', 'lt', 'gt', 'le',
     'ge', 'ne', 'eq', 'Query', 'relation', 'close_connection']
